@@ -348,7 +348,7 @@ export default function App() {
     : null;
 
   return (
-    <div className="min-h-screen bg-white text-[#172033] flex flex-col lg:flex-row">
+    <div className="min-h-[100dvh] bg-white text-[#172033] flex flex-col lg:flex-row pb-[env(safe-area-inset-bottom,0px)]">
       {/* Skip link for keyboard accessibility */}
       <a
         href="#main-content"

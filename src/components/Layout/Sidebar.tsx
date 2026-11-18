@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { animate } from 'motion';
+import { animate, motion, useMotionValue, useTransform } from 'motion/react';
 import {
   AlertCircle,
   BookOpen,
@@ -188,12 +188,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const desktopNavRef = useRef<HTMLElement | null>(null);
   const mobileNavRef = useRef<HTMLElement | null>(null);
   const drawerRef = useRef<HTMLDivElement | null>(null);
-  const scrimRef = useRef<HTMLDivElement | null>(null);
+  const drawerWidthRef = useRef<number>(300);
   const animControlsRef = useRef<{ stop?: () => void } | null>(null);
-  const scrimControlsRef = useRef<{ stop?: () => void } | null>(null);
+  const opacityControlsRef = useRef<{ stop?: () => void } | null>(null);
   const gestureSpringInFlightRef = useRef<'open' | 'close' | null>(null);
   const isOpenMobileRef = useRef(isOpenMobile);
   isOpenMobileRef.current = isOpenMobile;
+
+  // Single source of truth for drawer horizontal position + linked scrim opacity
+  const drawerX = useMotionValue(0);
+  const drawerOpacity = useMotionValue(1);
+  const scrimOpacity = useTransform([drawerX, drawerOpacity], ([x, op]: number[]) => {
+    const w = drawerWidthRef.current || 300;
+    return Math.max(0, Math.min(1, 1 + x / w)) * op;
+  });
 
   const dragStateRef = useRef<{
     active: boolean;
@@ -231,18 +239,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const stopAnimations = () => {
     animControlsRef.current?.stop?.();
-    scrimControlsRef.current?.stop?.();
+    opacityControlsRef.current?.stop?.();
     animControlsRef.current = null;
-    scrimControlsRef.current = null;
-  };
-
-  const getLiveTranslateX = (): number => {
-    const el = drawerRef.current;
-    if (!el) return 0;
-    const transform = window.getComputedStyle(el).transform;
-    if (!transform || transform === 'none') return 0;
-    const matrix = new DOMMatrixReadOnly(transform);
-    return matrix.m41;
+    opacityControlsRef.current = null;
   };
 
   useEffect(() => {
@@ -264,8 +263,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   useEffect(() => {
     if (!isRenderedMobile) return;
     const drawerEl = drawerRef.current;
-    const scrimEl = scrimRef.current;
-    if (!drawerEl || !scrimEl) return;
+    if (!drawerEl) return;
 
     // Preserve in-flight pointer release spring velocity without overwriting it
     if (isOpenMobile && gestureSpringInFlightRef.current === 'open') {
@@ -276,64 +274,58 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
     gestureSpringInFlightRef.current = null;
 
+    const width = drawerEl.getBoundingClientRect().width || 300;
+    drawerWidthRef.current = width;
     const reduced = prefersReducedMotion();
     stopAnimations();
 
     if (isOpenMobile) {
-      const width = drawerEl.getBoundingClientRect().width || 300;
       if (reduced) {
-        drawerEl.style.transform = 'translateX(0px)';
-        drawerEl.style.opacity = '0';
-        scrimEl.style.opacity = '0';
-        animControlsRef.current = animate(drawerEl, { opacity: 1 }, { duration: 0.14 });
-        scrimControlsRef.current = animate(scrimEl, { opacity: 1 }, { duration: 0.14 });
-      } else {
-        const currentX = getLiveTranslateX();
-        const startX = currentX < -1 ? currentX : -width;
-        drawerEl.style.transform = `translateX(${startX}px)`;
-        drawerEl.style.opacity = '1';
-        scrimEl.style.opacity = String(Math.max(0, Math.min(1, 1 + startX / width)));
-
-        animControlsRef.current = animate(
-          drawerEl,
-          { transform: 'translateX(0px)' },
-          { type: 'spring', bounce: 0, duration: 0.3 }
-        );
-        scrimControlsRef.current = animate(
-          scrimEl,
-          { opacity: 1 },
-          { duration: 0.22, ease: [0.23, 1, 0.32, 1] }
-        );
-      }
-    } else {
-      const width = drawerEl.getBoundingClientRect().width || 300;
-      if (reduced) {
-        animControlsRef.current = animate(drawerEl, { opacity: 0 }, { duration: 0.12 });
-        const scrimOut = animate(scrimEl, { opacity: 0 }, { duration: 0.12 });
-        scrimControlsRef.current = scrimOut;
-        scrimOut.finished.then(() => {
-          if (!isOpenMobileRef.current) setIsRenderedMobile(false);
+        drawerX.set(0);
+        drawerOpacity.set(0);
+        opacityControlsRef.current = animate(drawerOpacity, 1, {
+          duration: 0.14,
+          ease: [0.23, 1, 0.32, 1],
         });
       } else {
-        const exitAnim = animate(
-          drawerEl,
-          { transform: `translateX(${-width}px)` },
-          { duration: 0.2, ease: [0.32, 0.72, 0, 1] }
-        );
+        const currentX = drawerX.get();
+        if (currentX >= -1) {
+          drawerX.set(-width);
+        }
+        drawerOpacity.set(1);
+
+        animControlsRef.current = animate(drawerX, 0, {
+          type: 'spring',
+          bounce: 0,
+          duration: 0.3,
+        });
+      }
+    } else {
+      if (reduced) {
+        const fadeOut = animate(drawerOpacity, 0, {
+          duration: 0.12,
+          ease: [0.23, 1, 0.32, 1],
+        });
+        opacityControlsRef.current = fadeOut;
+        fadeOut.finished.then(() => {
+          if (!isOpenMobileRef.current && !dragStateRef.current.active) {
+            setIsRenderedMobile(false);
+          }
+        });
+      } else {
+        const exitAnim = animate(drawerX, -width, {
+          duration: 0.2,
+          ease: [0.32, 0.72, 0, 1],
+        });
         animControlsRef.current = exitAnim;
-        scrimControlsRef.current = animate(
-          scrimEl,
-          { opacity: 0 },
-          { duration: 0.18, ease: [0.23, 1, 0.32, 1] }
-        );
-        (exitAnim as { finished?: Promise<unknown> }).finished?.then(() => {
+        exitAnim.finished.then(() => {
           if (!isOpenMobileRef.current && !dragStateRef.current.active) {
             setIsRenderedMobile(false);
           }
         });
       }
     }
-  }, [isOpenMobile, isRenderedMobile]);
+  }, [isOpenMobile, isRenderedMobile, drawerX, drawerOpacity]);
 
   useEffect(() => {
     if (!isOpenMobile) return;
@@ -349,14 +341,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const handleDrawerPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0 && e.pointerType === 'mouse') return;
-    if (prefersReducedMotion()) return;
     const drawerEl = drawerRef.current;
     if (!drawerEl) return;
     if (dragStateRef.current.active) return;
 
+    drawerWidthRef.current = drawerEl.getBoundingClientRect().width || 300;
     gestureSpringInFlightRef.current = null;
-    const liveX = getLiveTranslateX();
+    const liveX = drawerX.get();
     stopAnimations();
+    drawerOpacity.set(1);
 
     dragStateRef.current = {
       active: true,
@@ -374,8 +367,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const drag = dragStateRef.current;
     if (!drag.active || drag.pointerId !== e.pointerId) return;
     const drawerEl = drawerRef.current;
-    const scrimEl = scrimRef.current;
-    if (!drawerEl || !scrimEl) return;
+    if (!drawerEl) return;
 
     const dx = e.clientX - drag.startX;
     const dy = e.clientY - drag.startY;
@@ -395,7 +387,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       }
     }
 
-    const width = drawerEl.getBoundingClientRect().width || 300;
+    const width = drawerWidthRef.current || 300;
     const rawOffset = drag.initialOffsetX + dx;
     const offset =
       rawOffset > 0 ? rubberband(rawOffset, width * 0.45, 0.55) : Math.max(-width, rawOffset);
@@ -404,8 +396,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     drag.samples.push({ x: e.clientX, y: e.clientY, time: performance.now() });
     if (drag.samples.length > 8) drag.samples.shift();
 
-    drawerEl.style.transform = `translateX(${offset}px)`;
-    scrimEl.style.opacity = String(Math.max(0, Math.min(1, 1 + offset / width)));
+    drawerX.set(offset);
   };
 
   const handleDrawerPointerEnd = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -418,8 +409,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
     if (!wasHorizontal) return;
     const drawerEl = drawerRef.current;
-    const scrimEl = scrimRef.current;
-    if (!drawerEl || !scrimEl) return;
+    if (!drawerEl) return;
 
     try {
       if (drawerEl.hasPointerCapture(e.pointerId)) {
@@ -429,25 +419,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
       // Ignore
     }
 
-    const width = drawerEl.getBoundingClientRect().width || 300;
+    const width = drawerWidthRef.current || 300;
+    const reduced = prefersReducedMotion();
     const { vx } = computePointerVelocity(drag.samples);
-    const projectedX = drag.currentOffsetX + projectMomentum(vx, 0.99);
-    const shouldClose = projectedX < -width * 0.42 || vx < -450;
+    const projectedX = drag.currentOffsetX + (reduced ? 0 : projectMomentum(vx, 0.99));
+    const shouldClose = reduced
+      ? drag.currentOffsetX < -width * 0.42
+      : projectedX < -width * 0.42 || vx < -450;
 
     if (shouldClose) {
       gestureSpringInFlightRef.current = 'close';
-      const closeAnim = animate(
-        drawerEl,
-        { transform: `translateX(${-width}px)` },
-        { type: 'spring', bounce: 0, duration: 0.26, velocity: vx }
-      );
+      const closeAnim = reduced
+        ? animate(drawerX, -width, { duration: 0.14, ease: [0.23, 1, 0.32, 1] })
+        : animate(drawerX, -width, { type: 'spring', bounce: 0, duration: 0.28, velocity: vx });
       animControlsRef.current = closeAnim;
-      scrimControlsRef.current = animate(
-        scrimEl,
-        { opacity: 0 },
-        { duration: 0.18, ease: [0.23, 1, 0.32, 1] }
-      );
-      (closeAnim as { finished?: Promise<unknown> }).finished?.then(() => {
+      closeAnim.finished.then(() => {
         if (gestureSpringInFlightRef.current === 'close') {
           gestureSpringInFlightRef.current = null;
         }
@@ -458,18 +444,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
       onCloseMobile();
     } else {
       gestureSpringInFlightRef.current = 'open';
-      const openAnim = animate(
-        drawerEl,
-        { transform: 'translateX(0px)' },
-        { type: 'spring', bounce: 0, duration: 0.3, velocity: vx }
-      );
+      const openAnim = reduced
+        ? animate(drawerX, 0, { duration: 0.14, ease: [0.23, 1, 0.32, 1] })
+        : animate(drawerX, 0, { type: 'spring', bounce: 0.14, duration: 0.32, velocity: vx });
       animControlsRef.current = openAnim;
-      scrimControlsRef.current = animate(
-        scrimEl,
-        { opacity: 1 },
-        { duration: 0.18, ease: [0.23, 1, 0.32, 1] }
-      );
-      (openAnim as { finished?: Promise<unknown> }).finished?.then(() => {
+      openAnim.finished.then(() => {
         if (gestureSpringInFlightRef.current === 'open') {
           gestureSpringInFlightRef.current = null;
         }
@@ -761,10 +740,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
     );
   };
 
-  const renderSidebarBody = (navRef: React.RefObject<HTMLElement | null>) => (
+  const renderSidebarBody = (navRef: React.RefObject<HTMLElement | null>, isMobile = false) => (
     <div className="flex h-full flex-col bg-[#F5F7FA] border-r border-[#E2E8F0] text-[#172033]">
       {/* Course & Module Identity */}
-      <div className="px-5 pt-5 pb-4 border-b border-[#E2E8F0]">
+      <div
+        className={`px-5 pb-4 border-b border-[#E2E8F0] ${
+          isMobile ? 'pt-[calc(1.25rem+env(safe-area-inset-top,0px))]' : 'pt-5'
+        }`}
+      >
         <div className="flex items-start justify-between gap-2">
           <div>
             <p className="text-xs font-medium text-[#475569] tracking-[0.01em]">
@@ -874,7 +857,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </nav>
 
       {/* Footer Utility: Reference Library & Safe Progress Reset */}
-      <div className="border-t border-[#E2E8F0] px-4 py-3.5 space-y-2">
+      <div
+        className={`border-t border-[#E2E8F0] px-4 pt-3.5 space-y-2 ${
+          isMobile ? 'pb-[calc(0.875rem+env(safe-area-inset-bottom,0px))]' : 'pb-3.5'
+        }`}
+      >
         <button
           type="button"
           onClick={() => {
@@ -932,9 +919,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Desktop persistent sidebar */}
       <aside
         aria-label="Course navigation"
-        className="hidden lg:block lg:w-[308px] lg:shrink-0 lg:sticky lg:top-0 lg:h-screen"
+        className="hidden lg:block lg:w-[308px] lg:shrink-0 lg:sticky lg:top-0 lg:h-[100dvh]"
       >
-        {renderSidebarBody(desktopNavRef)}
+        {renderSidebarBody(desktopNavRef, false)}
       </aside>
 
       {/* Mobile slide-over drawer with 1:1 pointer tracking, momentum projection & symmetric exit */}
@@ -945,22 +932,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
           aria-modal="true"
           aria-label="Course navigation drawer"
         >
-          <div
-            ref={scrimRef}
+          <motion.div
+            style={{ opacity: scrimOpacity }}
             className="fixed inset-0 bg-slate-900/45"
             onClick={onCloseMobile}
             aria-hidden="true"
           />
-          <div
+          <motion.div
             ref={drawerRef}
+            style={{ x: drawerX, opacity: drawerOpacity }}
             onPointerDown={handleDrawerPointerDown}
             onPointerMove={handleDrawerPointerMove}
             onPointerUp={handleDrawerPointerEnd}
             onPointerCancel={handleDrawerPointerEnd}
-            className="relative z-10 w-[86vw] max-w-[330px] h-full shadow-2xl touch-pan-y"
+            className="relative z-10 w-[86vw] max-w-[330px] h-[100dvh] shadow-2xl touch-pan-y"
           >
-            {renderSidebarBody(mobileNavRef)}
-          </div>
+            {renderSidebarBody(mobileNavRef, true)}
+          </motion.div>
         </div>
       )}
     </>

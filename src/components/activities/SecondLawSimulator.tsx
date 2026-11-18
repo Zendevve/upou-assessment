@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { animate } from 'motion/react';
 import { CheckCircle2, Pause, Play, RotateCcw } from 'lucide-react';
 import { calculateAcceleration, formatNum } from '../../physics/calculations';
 import {
@@ -35,14 +36,37 @@ export const SecondLawSimulator: React.FC<SecondLawSimulatorProps> = ({
   const calc = calculateAcceleration(parsedForce, parsedMass);
 
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const cartGroupRef = useRef<SVGGElement | null>(null);
+  const speedTextRef = useRef<SVGTextElement | null>(null);
   const rafRef = useRef<number | null>(null);
+  const releaseAnimRef = useRef<{ stop?: () => void } | null>(null);
   const lastTimeRef = useRef<number | null>(null);
+  const cartOffsetPctRef = useRef<number>(cartOffsetPct);
+  const velocityMsRef = useRef<number>(velocityMs);
   const dragRef = useRef<{
     active: boolean;
     pointerId: number;
     grabOffsetPct: number;
     samples: VelocitySample[];
   } | null>(null);
+
+  const applyCartDomState = (pct: number, speedMs: number, playingNow: boolean, draggingNow: boolean) => {
+    cartOffsetPctRef.current = pct;
+    velocityMsRef.current = speedMs;
+    if (cartGroupRef.current) {
+      const tx = ((pct - 50) / 100) * SVG_WIDTH;
+      cartGroupRef.current.style.transform = `translateX(${tx}px)`;
+    }
+    if (speedTextRef.current) {
+      if (draggingNow) {
+        speedTextRef.current.textContent = 'Release or flick the box to launch it along the track';
+      } else if (playingNow) {
+        speedTextRef.current.textContent = `Instantaneous speed: ${formatNum(Math.abs(speedMs))} m/s`;
+      } else {
+        speedTextRef.current.textContent = 'Press "Run Motion" or drag/flick the box along the track';
+      }
+    }
+  };
 
   useEffect(() => {
     if (!isPlaying || !calc.valid || isDraggingCart) {
@@ -63,25 +87,28 @@ export const SecondLawSimulator: React.FC<SecondLawSimulatorProps> = ({
       const dt = Math.min(0.05, (timestamp - lastTimeRef.current) / 1000);
       lastTimeRef.current = timestamp;
 
-      setVelocityMs((prevV) => {
-        const nextV = prevV + calc.accelerationMs2 * dt;
-        setCartOffsetPct((prevPos) => {
-          let nextPos = prevPos + nextV * dt * 5;
-          if (nextPos > MAX_PCT) nextPos = MIN_PCT;
-          if (nextPos < MIN_PCT) nextPos = MAX_PCT;
-          return nextPos;
-        });
-        return Math.max(-25, Math.min(25, nextV));
-      });
+      const nextV = Math.max(-25, Math.min(25, velocityMsRef.current + calc.accelerationMs2 * dt));
+      let nextPos = cartOffsetPctRef.current + nextV * dt * 5;
+      if (nextPos > MAX_PCT) nextPos = MIN_PCT;
+      if (nextPos < MIN_PCT) nextPos = MAX_PCT;
 
+      applyCartDomState(nextPos, nextV, true, false);
       rafRef.current = requestAnimationFrame(step);
     };
 
     rafRef.current = requestAnimationFrame(step);
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      setCartOffsetPct(cartOffsetPctRef.current);
+      setVelocityMs(velocityMsRef.current);
     };
   }, [isPlaying, calc.valid, calc.accelerationMs2, isDraggingCart]);
+
+  useEffect(() => {
+    return () => {
+      releaseAnimRef.current?.stop?.();
+    };
+  }, []);
 
   const recordExperiment = (
     nextForceStr: string,
@@ -112,19 +139,23 @@ export const SecondLawSimulator: React.FC<SecondLawSimulatorProps> = ({
   };
 
   const handleReset = () => {
+    releaseAnimRef.current?.stop?.();
     setIsPlaying(false);
     setForceInput('20');
     setMassInput('5');
+    applyCartDomState(50, 0, false, false);
     setCartOffsetPct(50);
     setVelocityMs(0);
   };
 
   const applyPreset = (f: number, m: number) => {
+    releaseAnimRef.current?.stop?.();
     const fStr = String(f);
     const mStr = String(m);
     setIsPlaying(false);
     setForceInput(fStr);
     setMassInput(mStr);
+    applyCartDomState(50, 0, false, false);
     setCartOffsetPct(50);
     setVelocityMs(0);
     recordExperiment(fStr, mStr, false);
@@ -143,6 +174,9 @@ export const SecondLawSimulator: React.FC<SecondLawSimulatorProps> = ({
     if (e.button !== 0 && e.pointerType === 'mouse') return;
     e.stopPropagation();
 
+    releaseAnimRef.current?.stop?.();
+    releaseAnimRef.current = null;
+
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
     } catch {
@@ -153,13 +187,14 @@ export const SecondLawSimulator: React.FC<SecondLawSimulatorProps> = ({
     dragRef.current = {
       active: true,
       pointerId: e.pointerId,
-      grabOffsetPct: cartOffsetPct - pointerPct,
+      grabOffsetPct: cartOffsetPctRef.current - pointerPct,
       samples: [{ x: e.clientX, y: e.clientY, time: performance.now() }],
     };
 
     // Interrupt active playback immediately and grab the live cart position
     setIsDraggingCart(true);
     setIsPlaying(false);
+    applyCartDomState(cartOffsetPctRef.current, 0, false, true);
     setVelocityMs(0);
     recordExperiment(forceInput, massInput, true);
   };
@@ -179,7 +214,7 @@ export const SecondLawSimulator: React.FC<SecondLawSimulatorProps> = ({
     drag.samples.push({ x: e.clientX, y: e.clientY, time: performance.now() });
     if (drag.samples.length > 8) drag.samples.shift();
 
-    setCartOffsetPct(nextPct);
+    applyCartDomState(nextPct, 0, false, true);
   };
 
   const handleCartPointerEnd = (e: React.PointerEvent<SVGGElement>) => {
@@ -203,13 +238,35 @@ export const SecondLawSimulator: React.FC<SecondLawSimulatorProps> = ({
     dragRef.current = null;
     setIsDraggingCart(false);
 
-    // Clamp cleanly back inside track if released inside rubber-band zone
-    setCartOffsetPct((p) => Math.max(MIN_PCT, Math.min(MAX_PCT, p)));
+    const livePct = cartOffsetPctRef.current;
+    const clampedPct = Math.max(MIN_PCT, Math.min(MAX_PCT, livePct));
+    const reduced = prefersReducedMotion();
+    const shouldLaunch = calc.valid && Math.abs(vx) > 220 && !reduced;
 
-    // If learner flicked the cart while valid, hand off velocity seamlessly into playback
-    if (calc.valid && Math.abs(vx) > 220 && !prefersReducedMotion()) {
+    if (shouldLaunch) {
+      // Launch seamlessly from the live position with zero teleport jump
+      applyCartDomState(livePct, handoffVelocityMs, true, false);
+      setCartOffsetPct(livePct);
       setVelocityMs(handoffVelocityMs);
       setIsPlaying(true);
+    } else if (Math.abs(livePct - clampedPct) > 0.05 && !reduced) {
+      // Velocity-seeded spring recovery back inside track boundary
+      releaseAnimRef.current = animate(livePct, clampedPct, {
+        type: 'spring',
+        bounce: 0.22,
+        duration: 0.34,
+        velocity: pctPerSec,
+        onUpdate: (latestPct) => {
+          applyCartDomState(latestPct, 0, false, false);
+        },
+        onComplete: () => {
+          releaseAnimRef.current = null;
+          setCartOffsetPct(clampedPct);
+        },
+      });
+    } else {
+      applyCartDomState(clampedPct, 0, false, false);
+      setCartOffsetPct(clampedPct);
     }
   };
 
@@ -356,6 +413,7 @@ export const SecondLawSimulator: React.FC<SecondLawSimulatorProps> = ({
 
               {/* GPU-translated Interactive Cart Group */}
               <g
+                ref={cartGroupRef}
                 onPointerDown={handleCartPointerDown}
                 onPointerMove={handleCartPointerMove}
                 onPointerUp={handleCartPointerEnd}
@@ -363,6 +421,7 @@ export const SecondLawSimulator: React.FC<SecondLawSimulatorProps> = ({
                 className="cursor-grab active:cursor-grabbing touch-none"
                 style={{
                   transform: `translateX(${cartTranslateX}px)`,
+                  willChange: isDraggingCart || isPlaying ? 'transform' : 'auto',
                   transition: isDraggingCart || isPlaying ? 'none' : 'transform 220ms cubic-bezier(0.23, 1, 0.32, 1)',
                 }}
               >
@@ -512,7 +571,7 @@ export const SecondLawSimulator: React.FC<SecondLawSimulatorProps> = ({
                 )}
               </g>
 
-              <text x="240" y="158" textAnchor="middle" fontSize="11" fill="#64748B">
+              <text ref={speedTextRef} x="240" y="158" textAnchor="middle" fontSize="11" fill="#64748B">
                 {isDraggingCart
                   ? 'Release or flick the box to launch it along the track'
                   : isPlaying
@@ -653,6 +712,8 @@ export const SecondLawSimulator: React.FC<SecondLawSimulatorProps> = ({
               <input
                 id="sim-mass-input"
                 type="number"
+                inputMode="decimal"
+                enterKeyHint="done"
                 min={0.5}
                 max={50}
                 step={0.5}

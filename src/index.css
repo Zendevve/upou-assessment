@@ -4,6 +4,15 @@
 @import "@fontsource/ibm-plex-mono/500.css";
 @import "@fontsource/ibm-plex-mono/600.css";
 
+/* Gate every Tailwind hover:* utility behind true fine-pointer hover capability */
+@custom-variant hover {
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      @slot;
+    }
+  }
+}
+
 @layer base {
   :root {
     --font-sans: "Plus Jakarta Sans Variable", "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -24,6 +33,8 @@
     font-optical-sizing: auto;
     scroll-behavior: smooth;
     -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+    overscroll-behavior: none;
   }
 
   body {
@@ -32,6 +43,33 @@
     color: #172033;
     line-height: 1.65;
     letter-spacing: 0em;
+    overscroll-behavior: none;
+  }
+
+  /* Prevent 300ms tap delay and accidental long-press text selection on native controls */
+  button,
+  a,
+  [role="button"] {
+    touch-action: manipulation;
+  }
+
+  button,
+  [role="button"],
+  .tab,
+  .chip,
+  .drag-handle {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  /* Prevent iOS Safari viewport zoom on focus for coarse touch pointers */
+  @media (pointer: coarse) {
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+    textarea,
+    select {
+      font-size: 16px;
+    }
   }
 
   /* Apple optical sizing: tighter tracking & leading on display headings */
@@ -63,6 +101,12 @@
   :focus-visible {
     outline: 2px solid #2563eb;
     outline-offset: 2px;
+  }
+
+  /* Cap long-form prose line length around 65 characters */
+  main article section > p,
+  main article header > p {
+    max-width: 65ch;
   }
 }
 
@@ -200,21 +244,30 @@
   animation: surfaceReveal 210ms var(--ease-out) both;
 }
 
-/* Apple Scroll Edge Mask for scrollable course navigation and modal bodies */
+/* Apple Scroll Edge Mask with eased color stops (no hard band) + contained overscroll */
 .nav-scroll-fade {
+  overscroll-behavior: contain;
   -webkit-mask-image: linear-gradient(
     to bottom,
-    transparent 0px,
+    rgba(0, 0, 0, 0) 0px,
+    rgba(0, 0, 0, 0.42) 4px,
+    rgba(0, 0, 0, 0.82) 7px,
     #000 10px,
     #000 calc(100% - 14px),
-    transparent 100%
+    rgba(0, 0, 0, 0.82) calc(100% - 10px),
+    rgba(0, 0, 0, 0.42) calc(100% - 5px),
+    rgba(0, 0, 0, 0) 100%
   );
   mask-image: linear-gradient(
     to bottom,
-    transparent 0px,
+    rgba(0, 0, 0, 0) 0px,
+    rgba(0, 0, 0, 0.42) 4px,
+    rgba(0, 0, 0, 0.82) 7px,
     #000 10px,
     #000 calc(100% - 14px),
-    transparent 100%
+    rgba(0, 0, 0, 0.82) calc(100% - 10px),
+    rgba(0, 0, 0, 0.42) calc(100% - 5px),
+    rgba(0, 0, 0, 0) 100%
   );
 }
 
@@ -248,7 +301,7 @@ input[type="range"].physics-slider::-webkit-slider-thumb {
   border: 2px solid #ffffff;
   box-shadow: 0 1px 4px rgba(23, 32, 51, 0.28);
   cursor: pointer;
-  transition: transform 140ms var(--ease-out), background-color 140ms ease, box-shadow 140ms var(--ease-out);
+  transition: transform 140ms var(--ease-out), background-color 140ms var(--ease-out), box-shadow 140ms var(--ease-out);
 }
 
 input[type="range"].physics-slider::-moz-range-thumb {
@@ -259,7 +312,7 @@ input[type="range"].physics-slider::-moz-range-thumb {
   border: 2px solid #ffffff;
   box-shadow: 0 1px 4px rgba(23, 32, 51, 0.28);
   cursor: pointer;
-  transition: transform 140ms var(--ease-out), background-color 140ms ease, box-shadow 140ms var(--ease-out);
+  transition: transform 140ms var(--ease-out), background-color 140ms var(--ease-out), box-shadow 140ms var(--ease-out);
 }
 
 @media (hover: hover) and (pointer: fine) {

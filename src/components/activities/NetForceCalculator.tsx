@@ -169,17 +169,25 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({
     if (meta.which === 'A') {
       const nextMagStr = String(roundedMag);
       const effectiveDir = roundedMag > 0 ? nextDir : forceADir;
-      setForceAMag(nextMagStr);
-      if (roundedMag > 0) setForceADir(nextDir);
-      setOvershootPx((prev) => ({ ...prev, A: rubberPx }));
-      evaluateInteraction(nextMagStr, effectiveDir, forceBMag, forceBDir);
+      if (nextMagStr !== forceAMag || effectiveDir !== forceADir) {
+        setForceAMag(nextMagStr);
+        if (roundedMag > 0) setForceADir(nextDir);
+        evaluateInteraction(nextMagStr, effectiveDir, forceBMag, forceBDir);
+      }
+      if (Math.abs(rubberPx - overshootRef.current.A) >= 0.4 || (rubberPx === 0 && overshootRef.current.A !== 0)) {
+        setOvershootPx((prev) => ({ ...prev, A: rubberPx }));
+      }
     } else {
       const nextMagStr = String(roundedMag);
       const effectiveDir = roundedMag > 0 ? nextDir : forceBDir;
-      setForceBMag(nextMagStr);
-      if (roundedMag > 0) setForceBDir(nextDir);
-      setOvershootPx((prev) => ({ ...prev, B: rubberPx }));
-      evaluateInteraction(forceAMag, forceADir, nextMagStr, effectiveDir);
+      if (nextMagStr !== forceBMag || effectiveDir !== forceBDir) {
+        setForceBMag(nextMagStr);
+        if (roundedMag > 0) setForceBDir(nextDir);
+        evaluateInteraction(forceAMag, forceADir, nextMagStr, effectiveDir);
+      }
+      if (Math.abs(rubberPx - overshootRef.current.B) >= 0.4 || (rubberPx === 0 && overshootRef.current.B !== 0)) {
+        setOvershootPx((prev) => ({ ...prev, B: rubberPx }));
+      }
     }
   };
 
@@ -584,6 +592,8 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({
               <input
                 id="force-1-input"
                 type="number"
+                inputMode="numeric"
+                enterKeyHint="done"
                 min={0}
                 max={100}
                 step={1}
@@ -656,6 +666,8 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({
               <input
                 id="force-2-input"
                 type="number"
+                inputMode="numeric"
+                enterKeyHint="done"
                 min={0}
                 max={100}
                 step={1}

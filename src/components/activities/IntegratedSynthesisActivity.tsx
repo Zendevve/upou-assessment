@@ -99,6 +99,8 @@ export const IntegratedSynthesisActivity: React.FC<IntegratedSynthesisActivityPr
             <input
               id="synth-step-2-mag"
               type="number"
+              inputMode="decimal"
+              enterKeyHint="next"
               step="any"
               placeholder="e.g. 10"
               value={netForceInput}
@@ -138,6 +140,8 @@ export const IntegratedSynthesisActivity: React.FC<IntegratedSynthesisActivityPr
           <input
             id="synth-step-3"
             type="number"
+            inputMode="decimal"
+            enterKeyHint="next"
             step="any"
             placeholder="Use a = F_net / m (with m = 5 kg)"
             value={accInput}

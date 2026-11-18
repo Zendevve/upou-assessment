@@ -23,6 +23,7 @@ import {
   LessonId,
   LessonProgressRecord,
 } from '../../physics/progress';
+import { pluralizeNoun } from '../../utils/formatters';
 
 interface LessonAssessmentProps {
   lessonId: LessonId;
@@ -225,7 +226,7 @@ export const LessonAssessment: React.FC<LessonAssessmentProps> = ({
         >
           <p className="font-semibold">
             Assessment passed! Complete the remaining required{' '}
-            {progress.incompleteActivityLabels.length === 1 ? 'activity' : 'activities'} above to unlock{' '}
+            {pluralizeNoun(progress.incompleteActivityLabels.length, 'activity', 'activities')} above to unlock{' '}
             {reqMeta.nextScreenLabel}:
           </p>
           <ul className="mt-1.5 list-disc pl-5 space-y-1 text-xs sm:text-sm">
@@ -312,6 +313,8 @@ export const LessonAssessment: React.FC<LessonAssessmentProps> = ({
                       <input
                         id={`la-num-${q.id}`}
                         type="number"
+                        inputMode="decimal"
+                        enterKeyHint="next"
                         step="any"
                         value={ans.numericValue ?? ''}
                         onChange={(e) => updateAnswer(q.id, { numericValue: e.target.value })}
@@ -337,6 +340,8 @@ export const LessonAssessment: React.FC<LessonAssessmentProps> = ({
                           <input
                             id={`la-numdir-${q.id}`}
                             type="number"
+                            inputMode="decimal"
+                            enterKeyHint="next"
                             step="any"
                             value={ans.numericValue ?? ''}
                             onChange={(e) => updateAnswer(q.id, { numericValue: e.target.value })}

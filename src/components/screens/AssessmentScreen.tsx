@@ -200,6 +200,8 @@ export const AssessmentScreen: React.FC<AssessmentScreenProps> = ({
                     <input
                       id={`num-${currentQ.id}`}
                       type="number"
+                      inputMode="decimal"
+                      enterKeyHint="next"
                       step="any"
                       value={currentAnswer.numericValue ?? ''}
                       onChange={(e) => updateAnswer(currentQ.id, { numericValue: e.target.value })}
@@ -239,6 +241,8 @@ export const AssessmentScreen: React.FC<AssessmentScreenProps> = ({
                       <input
                         id={`num-dir-${currentQ.id}`}
                         type="number"
+                        inputMode="decimal"
+                        enterKeyHint="next"
                         step="any"
                         value={currentAnswer.numericValue ?? ''}
                         onChange={(e) => updateAnswer(currentQ.id, { numericValue: e.target.value })}

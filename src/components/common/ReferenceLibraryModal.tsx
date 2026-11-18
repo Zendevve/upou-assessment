@@ -164,7 +164,7 @@ export const ReferenceLibraryModal: React.FC<ReferenceLibraryModalProps> = ({
       <div
         ref={cardRef}
         style={{ transformOrigin: 'center center' }}
-        className="relative z-10 flex max-h-[90vh] w-full max-w-3xl flex-col rounded-lg border border-[#CBD5E1] bg-white shadow-2xl"
+        className="relative z-10 flex max-h-[90dvh] w-full max-w-3xl flex-col rounded-lg border border-[#CBD5E1] bg-white shadow-2xl"
       >
         {/* Header */}
         <div className="flex items-start justify-between gap-3 border-b border-[#E2E8F0] px-5 py-4">
@@ -240,7 +240,7 @@ export const ReferenceLibraryModal: React.FC<ReferenceLibraryModalProps> = ({
         </div>
 
         {/* Body */}
-        <div className="nav-scroll-fade flex-1 overflow-y-auto px-5 py-4">
+        <div className="nav-scroll-fade flex-1 overflow-y-auto px-5 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
           {activeTab === 'glossary' ? (
             <div key="tab-glossary" className="screen-enter space-y-4">
               <div className="flex flex-wrap items-center gap-2.5">
@@ -255,6 +255,9 @@ export const ReferenceLibraryModal: React.FC<ReferenceLibraryModalProps> = ({
                   <input
                     id="glossary-search-input"
                     type="search"
+                    enterKeyHint="search"
+                    autoCapitalize="none"
+                    autoCorrect="off"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     placeholder="Search terms, examples, or laws (e.g., inertia, N, First Law)..."

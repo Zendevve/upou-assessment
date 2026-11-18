@@ -23,7 +23,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   const { percentage } = calculateOverallModuleProgress(progressState);
 
   return (
-    <header className="mobile-topbar translucent-chrome lg:hidden sticky top-0 z-30">
+    <header className="mobile-topbar translucent-chrome lg:hidden sticky top-0 z-30 pt-[env(safe-area-inset-top,0px)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)]">
       <div className="flex items-center justify-between gap-2.5 px-3 sm:px-4 py-2.5">
         <button
           type="button"

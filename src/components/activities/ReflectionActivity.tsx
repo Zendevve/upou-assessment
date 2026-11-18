@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { CheckCircle2, Eye, EyeOff, FileText, RotateCcw, ShieldCheck } from 'lucide-react';
 import { ReflectionRecord } from '../../physics/progress';
+import { formatCount } from '../../utils/formatters';
 
 interface ReflectionActivityProps {
   reflection: ReflectionRecord;
@@ -110,7 +111,7 @@ export const ReflectionActivity: React.FC<ReflectionActivityProps> = ({
             Your Reflection Notes
           </label>
           <span className="font-mono text-xs text-[#475569] tabular-nums">
-            {wordCount} words · Suggested length: ~50–120 words
+            {formatCount(wordCount, 'word', 'words')} · Suggested length: ~50–120 words
           </span>
         </div>
 

@@ -441,6 +441,8 @@ export const KnowledgeCheck: React.FC<KnowledgeCheckProps> = ({
               <input
                 id={`kc-num-${id}`}
                 type="number"
+                inputMode="decimal"
+                enterKeyHint="done"
                 step="any"
                 value={numericInput}
                 onChange={(e) => {
