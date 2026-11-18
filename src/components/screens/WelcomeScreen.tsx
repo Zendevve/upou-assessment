@@ -1,22 +1,33 @@
 import React from 'react';
-import { ArrowRight, BookOpen, CheckCircle2, Clock, Compass } from 'lucide-react';
+import { ArrowRight, BookOpen, CheckCircle2, Clock, Compass, Lock } from 'lucide-react';
 import { COURSE_INFO, MODULE_OBJECTIVES } from '../../data/moduleContent';
 import { ScreenId } from '../../physics/calculations';
+import {
+  calculateOverallModuleProgress,
+  canAccessScreen,
+  ModuleProgressState,
+} from '../../physics/progress';
 
 interface WelcomeScreenProps {
-  completedScreens: ScreenId[];
+  progressState: ModuleProgressState;
   onStartLearning: () => void;
   onNavigate: (id: ScreenId) => void;
+  onLockedAttempt: (id: ScreenId) => void;
 }
 
 const STAGGER_DELAYS_MS = [0, 35, 65, 90, 110, 125];
 
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
-  completedScreens,
+  progressState,
   onStartLearning,
   onNavigate,
+  onLockedAttempt,
 }) => {
-  const hasStarted = completedScreens.some((id) => id !== 'welcome');
+  const { completedCount } = calculateOverallModuleProgress(progressState);
+  const hasStarted =
+    completedCount > 0 ||
+    Object.keys(progressState.lessons['lesson-1'].activities).length > 0 ||
+    progressState.lessons['lesson-1'].assessment.attempts > 0;
 
   return (
     <article className="space-y-8">
@@ -78,6 +89,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                 : obj.lessonId === 'lesson-4'
                 ? 'Lesson 4'
                 : 'Lesson 5';
+            const isUnlocked = canAccessScreen(progressState, obj.lessonId);
             return (
               <li
                 key={obj.number}
@@ -91,10 +103,19 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                   <p className="text-sm font-medium text-[#172033]">{obj.text}</p>
                   <button
                     type="button"
-                    onClick={() => onNavigate(obj.lessonId)}
-                    className="tactile-press mt-1.5 inline-block text-xs font-medium text-[#2563EB] hover:underline"
+                    onClick={() =>
+                      isUnlocked ? onNavigate(obj.lessonId) : onLockedAttempt(obj.lessonId)
+                    }
+                    aria-disabled={!isUnlocked ? 'true' : undefined}
+                    tabIndex={!isUnlocked ? -1 : 0}
+                    className={`mt-1.5 inline-flex items-center gap-1 text-xs font-medium ${
+                      isUnlocked
+                        ? 'tactile-press text-[#2563EB] hover:underline'
+                        : 'text-[#64748B] cursor-not-allowed'
+                    }`}
                   >
-                    Go to {targetLesson}
+                    {!isUnlocked && <Lock className="h-3 w-3 text-[#94A3B8]" aria-hidden="true" />}
+                    <span>{isUnlocked ? `Go to ${targetLesson}` : `${targetLesson} (Locked)`}</span>
                   </button>
                 </div>
               </li>
@@ -126,13 +147,13 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           </h2>
           <ul className="mt-3 space-y-2 text-sm text-[#334155] list-disc pl-5">
             <li>
-              <strong>Self-paced navigation:</strong> Use the sidebar (or Menu on mobile) and Previous/Next buttons to move at your own pace and revisit any lesson anytime.
+              <strong>Sequential mastery progression:</strong> Start with Lesson 1 and unlock each subsequent lesson by completing all interactive activities and scoring at least 70% on that lesson’s assessment. Unlocked lessons stay open for review anytime.
             </li>
             <li>
               <strong>Interactive practice:</strong> Every lesson includes hands-on physics activities and a quick knowledge check with immediate explanations.
             </li>
             <li>
-              <strong>Final assessment:</strong> Finish with a 10-question assessment (70% suggested mastery benchmark) with full answer review. Progress is saved locally in your browser without collecting personal information.
+              <strong>Final assessment:</strong> Finish with a 10-question assessment (70% mastery benchmark) with full answer review. Progress is saved locally in your browser without collecting personal information.
             </li>
           </ul>
         </div>

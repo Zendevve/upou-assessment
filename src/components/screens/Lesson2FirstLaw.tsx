@@ -6,21 +6,27 @@ import {
   MisconceptionCallout,
   ObjectiveBox,
 } from '../common/Blocks';
+import { LessonAssessment } from '../common/LessonAssessment';
 import { InertiaScenario } from '../activities/InertiaScenario';
-import { ScreenId } from '../../physics/calculations';
+import { AssessmentResultSummary, ScreenId } from '../../physics/calculations';
+import { LessonProgressRecord } from '../../physics/progress';
 
 interface LessonProps {
-  isCompleted: boolean;
+  lessonRecord: LessonProgressRecord;
+  isNextLocked: boolean;
   onNavigate: (id: ScreenId) => void;
-  onCompleteLesson: () => void;
-  onActivityUsed: (activityId: string) => void;
+  onActivityCompleted: (activityId: string) => void;
+  onAssessmentSubmitted: (result: AssessmentResultSummary) => void;
+  onLockedNextAttempt: () => void;
 }
 
 export const Lesson2FirstLaw: React.FC<LessonProps> = ({
-  isCompleted,
+  lessonRecord,
+  isNextLocked,
   onNavigate,
-  onCompleteLesson,
-  onActivityUsed,
+  onActivityCompleted,
+  onAssessmentSubmitted,
+  onLockedNextAttempt,
 }) => {
   return (
     <article>
@@ -29,7 +35,7 @@ export const Lesson2FirstLaw: React.FC<LessonProps> = ({
         title="Newton's First Law and Inertia"
         duration="20 min"
         objectiveTag="Objectives 2 & 3"
-        isCompleted={isCompleted}
+        isCompleted={lessonRecord.completed}
       />
 
       <ObjectiveBox objective="Explain inertia and its relationship with mass, and describe Newton's First Law using familiar real-world situations." />
@@ -91,7 +97,10 @@ export const Lesson2FirstLaw: React.FC<LessonProps> = ({
           Examine what happens inside a city bus before and during sudden braking.
         </p>
 
-        <InertiaScenario onCompleted={() => onActivityUsed('inertia-bus-scenario')} />
+        <InertiaScenario
+          isCompleted={Boolean(lessonRecord.activities['inertia-bus-scenario'])}
+          onCompleted={() => onActivityCompleted('inertia-bus-scenario')}
+        />
       </section>
 
       <KnowledgeCheck
@@ -121,16 +130,24 @@ export const Lesson2FirstLaw: React.FC<LessonProps> = ({
               'All objects with mass always have inertia, whether at rest or in motion—the bowling ball’s inertia is why it takes effort to start it rolling.',
           },
         ]}
-        alreadyPassed={isCompleted}
-        onPassed={onCompleteLesson}
+        alreadyPassed={Boolean(lessonRecord.activities['lesson-2-kc'])}
+        onPassed={() => onActivityCompleted('lesson-2-kc')}
+      />
+
+      <LessonAssessment
+        lessonId="lesson-2"
+        lessonRecord={lessonRecord}
+        onSubmitAssessment={onAssessmentSubmitted}
+        onNavigate={onNavigate}
       />
 
       <LessonFooterNav
         currentScreen="lesson-2"
-        isCompleted={isCompleted}
+        isCompleted={lessonRecord.completed}
+        isNextLocked={isNextLocked}
         onNavigate={onNavigate}
-        onMarkComplete={onCompleteLesson}
-        completionHint="Complete the Lesson 2 Knowledge Check above to mark this lesson complete."
+        onLockedNextAttempt={onLockedNextAttempt}
+        completionHint="Complete both Lesson 2 interactive tasks and score at least 70% on the Lesson 2 Assessment above to unlock Lesson 3."
       />
     </article>
   );

@@ -8,19 +8,25 @@ import {
 import { rubberband } from '../../utils/fluidMotion';
 
 interface NetForceCalculatorProps {
-  onInteracted?: () => void;
+  isCompleted?: boolean;
+  onCompleted?: () => void;
 }
 
 const MAX_SLIDER_FORCE = 50;
 const MAX_ARROW_PX = 115;
 
-export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({ onInteracted }) => {
+export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({
+  isCompleted = false,
+  onCompleted,
+}) => {
   const [forceAMag, setForceAMag] = useState<string>('15');
   const [forceADir, setForceADir] = useState<HorizontalDirection>('right');
   const [forceBMag, setForceBMag] = useState<string>('5');
   const [forceBDir, setForceBDir] = useState<HorizontalDirection>('left');
   const [draggingWhich, setDraggingWhich] = useState<'A' | 'B' | null>(null);
   const [overshootPx, setOvershootPx] = useState<{ A: number; B: number }>({ A: 0, B: 0 });
+  const [exploredBalanced, setExploredBalanced] = useState<boolean>(isCompleted);
+  const [exploredUnbalanced, setExploredUnbalanced] = useState<boolean>(isCompleted);
 
   const svgRef = useRef<SVGSVGElement | null>(null);
   const dragMetaRef = useRef<{
@@ -37,8 +43,27 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({ onIntera
     { magnitude: parsedB, direction: forceBDir }
   );
 
-  const markUsed = () => {
-    if (onInteracted) onInteracted();
+  const evaluateInteraction = (
+    aMagVal: string,
+    aDirVal: HorizontalDirection,
+    bMagVal: string,
+    bDirVal: HorizontalDirection
+  ) => {
+    const aNum = aMagVal.trim() === '' ? NaN : Number(aMagVal);
+    const bNum = bMagVal.trim() === '' ? NaN : Number(bMagVal);
+    const nextRes = calculateNetForce(
+      { magnitude: aNum, direction: aDirVal },
+      { magnitude: bNum, direction: bDirVal }
+    );
+    if (!nextRes.valid) return;
+
+    const nextBal = exploredBalanced || nextRes.isBalanced;
+    const nextUnbal = exploredUnbalanced || !nextRes.isBalanced;
+    if (nextRes.isBalanced && !exploredBalanced) setExploredBalanced(true);
+    if (!nextRes.isBalanced && !exploredUnbalanced) setExploredUnbalanced(true);
+    if (nextBal && nextUnbal && onCompleted) {
+      onCompleted();
+    }
   };
 
   const applyPreset = (
@@ -47,15 +72,20 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({ onIntera
     bMag: number,
     bDir: HorizontalDirection
   ) => {
-    setForceAMag(String(aMag));
+    const aStr = String(aMag);
+    const bStr = String(bMag);
+    setForceAMag(aStr);
     setForceADir(aDir);
-    setForceBMag(String(bMag));
+    setForceBMag(bStr);
     setForceBDir(bDir);
-    markUsed();
+    evaluateInteraction(aStr, aDir, bStr, bDir);
   };
 
   const handleReset = () => {
-    applyPreset(15, 'right', 5, 'left');
+    setForceAMag('15');
+    setForceADir('right');
+    setForceBMag('5');
+    setForceBDir('left');
   };
 
   // Scale arrow length visually (max 115px at 50N+)
@@ -108,7 +138,6 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({ onIntera
       grabOffsetN: currentSigned - pointerSigned,
     };
     setDraggingWhich(which);
-    markUsed();
   };
 
   const moveHandleDrag = (e: React.PointerEvent<SVGCircleElement>) => {
@@ -125,13 +154,19 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({ onIntera
     const rubberPx = excessN > 0 ? rubberband((excessN / MAX_SLIDER_FORCE) * MAX_ARROW_PX, 28, 0.55) : 0;
 
     if (meta.which === 'A') {
-      setForceAMag(String(roundedMag));
+      const nextMagStr = String(roundedMag);
+      const effectiveDir = roundedMag > 0 ? nextDir : forceADir;
+      setForceAMag(nextMagStr);
       if (roundedMag > 0) setForceADir(nextDir);
       setOvershootPx((prev) => ({ ...prev, A: rubberPx }));
+      evaluateInteraction(nextMagStr, effectiveDir, forceBMag, forceBDir);
     } else {
-      setForceBMag(String(roundedMag));
+      const nextMagStr = String(roundedMag);
+      const effectiveDir = roundedMag > 0 ? nextDir : forceBDir;
+      setForceBMag(nextMagStr);
       if (roundedMag > 0) setForceBDir(nextDir);
       setOvershootPx((prev) => ({ ...prev, B: rubberPx }));
+      evaluateInteraction(forceAMag, forceADir, nextMagStr, effectiveDir);
     }
   };
 
@@ -166,8 +201,31 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({ onIntera
             Net Force Calculator
           </h3>
           <p className="mt-1 text-sm text-[#475569]">
-            Drag the force arrow tips directly on the diagram, or use the inputs below to see how horizontal forces combine.
+            To complete this activity, test both a <strong>balanced (0 N)</strong> case and an <strong>unbalanced (≠ 0 N)</strong> case by dragging arrows, using presets, or adjusting inputs.
           </p>
+          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
+            <span
+              className={`inline-flex items-center gap-1 font-medium ${
+                isCompleted || exploredBalanced ? 'text-[#15803D]' : 'text-[#64748B]'
+              }`}
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+              Balanced (0 N) tested
+            </span>
+            <span
+              className={`inline-flex items-center gap-1 font-medium ${
+                isCompleted || exploredUnbalanced ? 'text-[#15803D]' : 'text-[#64748B]'
+              }`}
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+              Unbalanced (≠ 0 N) tested
+            </span>
+            {isCompleted && (
+              <span className="surface-enter rounded border border-[#BBF7D0] bg-[#F0FDF4] px-2 py-0.5 font-semibold text-[#15803D]">
+                Activity Completed
+              </span>
+            )}
+          </div>
         </div>
 
         <button
@@ -469,8 +527,9 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({ onIntera
                 step={1}
                 value={forceAMag}
                 onChange={(e) => {
-                  setForceAMag(e.target.value);
-                  markUsed();
+                  const val = e.target.value;
+                  setForceAMag(val);
+                  evaluateInteraction(val, forceADir, forceBMag, forceBDir);
                 }}
                 className="w-24 rounded-md border border-[#CBD5E1] bg-white px-3 py-2 font-mono text-sm text-[#172033] tabular-nums min-h-[44px]"
               />
@@ -482,8 +541,9 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({ onIntera
                 step={1}
                 value={Number.isFinite(parsedA) ? Math.min(50, Math.max(0, parsedA)) : 0}
                 onChange={(e) => {
-                  setForceAMag(e.target.value);
-                  markUsed();
+                  const val = e.target.value;
+                  setForceAMag(val);
+                  evaluateInteraction(val, forceADir, forceBMag, forceBDir);
                 }}
                 className="physics-slider flex-1"
               />
@@ -494,7 +554,7 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({ onIntera
                 type="button"
                 onClick={() => {
                   setForceADir('left');
-                  markUsed();
+                  evaluateInteraction(forceAMag, 'left', forceBMag, forceBDir);
                 }}
                 aria-pressed={forceADir === 'left'}
                 className={`tactile-press flex-1 inline-flex items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-xs font-medium min-h-[40px] ${
@@ -510,7 +570,7 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({ onIntera
                 type="button"
                 onClick={() => {
                   setForceADir('right');
-                  markUsed();
+                  evaluateInteraction(forceAMag, 'right', forceBMag, forceBDir);
                 }}
                 aria-pressed={forceADir === 'right'}
                 className={`tactile-press flex-1 inline-flex items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-xs font-medium min-h-[40px] ${
@@ -539,8 +599,9 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({ onIntera
                 step={1}
                 value={forceBMag}
                 onChange={(e) => {
-                  setForceBMag(e.target.value);
-                  markUsed();
+                  const val = e.target.value;
+                  setForceBMag(val);
+                  evaluateInteraction(forceAMag, forceADir, val, forceBDir);
                 }}
                 className="w-24 rounded-md border border-[#CBD5E1] bg-white px-3 py-2 font-mono text-sm text-[#172033] tabular-nums min-h-[44px]"
               />
@@ -552,8 +613,9 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({ onIntera
                 step={1}
                 value={Number.isFinite(parsedB) ? Math.min(50, Math.max(0, parsedB)) : 0}
                 onChange={(e) => {
-                  setForceBMag(e.target.value);
-                  markUsed();
+                  const val = e.target.value;
+                  setForceBMag(val);
+                  evaluateInteraction(forceAMag, forceADir, val, forceBDir);
                 }}
                 className="physics-slider flex-1"
               />
@@ -564,7 +626,7 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({ onIntera
                 type="button"
                 onClick={() => {
                   setForceBDir('left');
-                  markUsed();
+                  evaluateInteraction(forceAMag, forceADir, forceBMag, 'left');
                 }}
                 aria-pressed={forceBDir === 'left'}
                 className={`tactile-press flex-1 inline-flex items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-xs font-medium min-h-[40px] ${
@@ -580,7 +642,7 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({ onIntera
                 type="button"
                 onClick={() => {
                   setForceBDir('right');
-                  markUsed();
+                  evaluateInteraction(forceAMag, forceADir, forceBMag, 'right');
                 }}
                 aria-pressed={forceBDir === 'right'}
                 className={`tactile-press flex-1 inline-flex items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-xs font-medium min-h-[40px] ${

@@ -1,26 +1,29 @@
 import React from 'react';
-import { ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Lock } from 'lucide-react';
 import { LESSON_NAV_ITEMS } from '../../data/moduleContent';
 import { ScreenId } from '../../physics/calculations';
 
 interface LessonFooterNavProps {
   currentScreen: ScreenId;
   isCompleted: boolean;
+  isNextLocked: boolean;
   onNavigate: (id: ScreenId) => void;
-  onMarkComplete?: () => void;
+  onLockedNextAttempt: () => void;
   completionHint?: string;
 }
 
 export const LessonFooterNav: React.FC<LessonFooterNavProps> = ({
   currentScreen,
   isCompleted,
+  isNextLocked,
   onNavigate,
-  onMarkComplete,
+  onLockedNextAttempt,
   completionHint,
 }) => {
   const index = LESSON_NAV_ITEMS.findIndex((i) => i.id === currentScreen);
   const prevItem = index > 0 ? LESSON_NAV_ITEMS[index - 1] : null;
-  const nextItem = index >= 0 && index < LESSON_NAV_ITEMS.length - 1 ? LESSON_NAV_ITEMS[index + 1] : null;
+  const nextItem =
+    index >= 0 && index < LESSON_NAV_ITEMS.length - 1 ? LESSON_NAV_ITEMS[index + 1] : null;
 
   return (
     <nav
@@ -47,46 +50,34 @@ export const LessonFooterNav: React.FC<LessonFooterNavProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          {onMarkComplete && (
-            <button
-              type="button"
-              onClick={onMarkComplete}
-              className={`tactile-press inline-flex items-center gap-2 rounded-md px-4 py-2.5 text-sm font-medium min-h-[44px] border ${
-                isCompleted
-                  ? 'border-[#BBF7D0] bg-[#F0FDF4] text-[#15803D]'
-                  : 'border-[#CBD5E1] bg-[#F5F7FA] text-[#172033] hover:bg-slate-200/70'
-              }`}
-            >
-              <CheckCircle2
-                className={`h-4 w-4 transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] ${
-                  isCompleted ? 'scale-105' : 'scale-100'
-                }`}
-                aria-hidden="true"
-              />
-              <span>{isCompleted ? 'Lesson Completed' : 'Mark Lesson Complete'}</span>
-            </button>
-          )}
-
           {nextItem && (
             <button
               type="button"
-              onClick={() => onNavigate(nextItem.id)}
-              className="group tactile-press inline-flex items-center gap-2 rounded-md bg-[#2563EB] px-5 py-2.5 text-sm font-medium text-white hover:bg-[#1D4ED8] min-h-[44px]"
+              onClick={() => (isNextLocked ? onLockedNextAttempt() : onNavigate(nextItem.id))}
+              aria-disabled={isNextLocked ? 'true' : undefined}
+              className={`group inline-flex items-center gap-2 rounded-md px-5 py-2.5 text-sm font-medium min-h-[44px] ${
+                isNextLocked
+                  ? 'border border-[#CBD5E1] bg-[#F1F5F9] text-[#64748B] cursor-not-allowed'
+                  : 'tactile-press bg-[#2563EB] text-white hover:bg-[#1D4ED8]'
+              }`}
             >
-              <span>Next: {nextItem.shortLabel}</span>
-              <ArrowRight
-                className="hover-nudge-right h-4 w-4 transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)]"
-                aria-hidden="true"
-              />
+              {isNextLocked && <Lock className="h-4 w-4 text-[#94A3B8]" aria-hidden="true" />}
+              <span>
+                {isNextLocked ? `Locked: ${nextItem.shortLabel}` : `Next: ${nextItem.shortLabel}`}
+              </span>
+              {!isNextLocked && (
+                <ArrowRight
+                  className="hover-nudge-right h-4 w-4 transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)]"
+                  aria-hidden="true"
+                />
+              )}
             </button>
           )}
         </div>
       </div>
 
       {!isCompleted && completionHint && (
-        <p className="mt-3 text-xs text-[#64748B]">
-          Tip: {completionHint}
-        </p>
+        <p className="mt-3 text-xs text-[#64748B]">{completionHint}</p>
       )}
     </nav>
   );

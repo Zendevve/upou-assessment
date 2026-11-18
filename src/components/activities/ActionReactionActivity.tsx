@@ -4,6 +4,7 @@ import { THIRD_LAW_SCENARIOS } from '../../data/moduleContent';
 import { ThirdLawDiagram } from '../diagrams/ThirdLawDiagrams';
 
 interface ActionReactionActivityProps {
+  isCompleted?: boolean;
   onAllScenariosCompleted?: () => void;
 }
 
@@ -17,6 +18,7 @@ interface ScenarioSelection {
 }
 
 export const ActionReactionActivity: React.FC<ActionReactionActivityProps> = ({
+  isCompleted = false,
   onAllScenariosCompleted,
 }) => {
   const [activeIndex, setActiveIndex] = useState(0);
@@ -112,9 +114,17 @@ export const ActionReactionActivity: React.FC<ActionReactionActivityProps> = ({
           </p>
         </div>
 
-        <p className="font-mono text-xs font-medium text-[#475569] tabular-nums">
-          {completedCount} / {THIRD_LAW_SCENARIOS.length} scenarios solved
-        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="font-mono text-xs font-medium text-[#475569] tabular-nums">
+            {isCompleted ? THIRD_LAW_SCENARIOS.length : completedCount} / {THIRD_LAW_SCENARIOS.length} scenarios solved
+          </p>
+          {isCompleted && (
+            <span className="surface-enter inline-flex items-center gap-1 rounded border border-[#BBF7D0] bg-[#F0FDF4] px-2 py-0.5 text-xs font-semibold text-[#15803D]">
+              <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+              Activity Completed
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Scenario Tabs */}

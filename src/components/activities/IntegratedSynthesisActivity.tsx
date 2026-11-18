@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { CheckCircle2, RotateCcw, XCircle } from 'lucide-react';
 
 interface IntegratedSynthesisActivityProps {
+  isCompleted?: boolean;
   onCompleted: () => void;
 }
 
 export const IntegratedSynthesisActivity: React.FC<IntegratedSynthesisActivityProps> = ({
+  isCompleted = false,
   onCompleted,
 }) => {
   const [forcesChoice, setForcesChoice] = useState('');
@@ -48,14 +50,22 @@ export const IntegratedSynthesisActivity: React.FC<IntegratedSynthesisActivityPr
       aria-labelledby="synthesis-activity-title"
       className="my-8 rounded-md border border-[#CBD5E1] bg-white p-5 sm:p-6"
     >
-      <div className="border-b border-[#E2E8F0] pb-4">
-        <p className="text-xs font-semibold tracking-[0.01em] text-[#2563EB]">Guided Synthesis Practice</p>
-        <h3 id="synthesis-activity-title" className="mt-1 text-lg font-semibold text-[#172033]">
-          Step-by-Step Analysis: Applying All Concepts Together
-        </h3>
-        <p className="mt-1 text-sm text-[#475569]">
-          Complete each of the five steps below for the 5 kg box scenario before checking your full interpretation.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#E2E8F0] pb-4">
+        <div>
+          <p className="text-xs font-semibold tracking-[0.01em] text-[#2563EB]">Guided Synthesis Practice</p>
+          <h3 id="synthesis-activity-title" className="mt-1 text-lg font-semibold text-[#172033]">
+            Step-by-Step Analysis: Applying All Concepts Together
+          </h3>
+          <p className="mt-1 text-sm text-[#475569]">
+            Complete each of the five steps below for the 5 kg box scenario before checking your full interpretation.
+          </p>
+        </div>
+        {isCompleted && (
+          <span className="surface-enter inline-flex items-center gap-1 rounded border border-[#BBF7D0] bg-[#F0FDF4] px-2.5 py-1 text-xs font-semibold text-[#15803D]">
+            <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+            Activity Completed
+          </span>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} className="mt-5 space-y-5">

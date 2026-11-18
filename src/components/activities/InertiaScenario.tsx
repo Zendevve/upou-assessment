@@ -3,6 +3,7 @@ import { CheckCircle2, RotateCcw, XCircle } from 'lucide-react';
 import { BusInertiaDiagram } from '../diagrams/BusInertiaDiagram';
 
 interface InertiaScenarioProps {
+  isCompleted?: boolean;
   onCompleted?: () => void;
 }
 
@@ -38,20 +39,43 @@ const SCENARIO_OPTIONS = [
   },
 ];
 
-export const InertiaScenario: React.FC<InertiaScenarioProps> = ({ onCompleted }) => {
+export const InertiaScenario: React.FC<InertiaScenarioProps> = ({
+  isCompleted = false,
+  onCompleted,
+}) => {
   const [phase, setPhase] = useState<'cruising' | 'braking'>('braking');
+  const [visitedCruising, setVisitedCruising] = useState<boolean>(isCompleted);
+  const [visitedBraking, setVisitedBraking] = useState<boolean>(true);
+  const [solvedQuestion, setSolvedQuestion] = useState<boolean>(isCompleted);
   const [selectedId, setSelectedId] = useState<string>('');
   const [submitted, setSubmitted] = useState(false);
 
   const selectedOption = SCENARIO_OPTIONS.find((o) => o.id === selectedId);
   const isCorrect = Boolean(submitted && selectedOption?.isCorrect);
+  const bothStagesVisited = visitedCruising && visitedBraking;
+
+  const handlePhaseChange = (nextPhase: 'cruising' | 'braking') => {
+    setPhase(nextPhase);
+    const nextCruising = visitedCruising || nextPhase === 'cruising';
+    const nextBraking = visitedBraking || nextPhase === 'braking';
+    if (nextPhase === 'cruising') setVisitedCruising(true);
+    if (nextPhase === 'braking') setVisitedBraking(true);
+
+    if (nextCruising && nextBraking && solvedQuestion && onCompleted) {
+      onCompleted();
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedId) return;
     setSubmitted(true);
-    if (SCENARIO_OPTIONS.find((o) => o.id === selectedId)?.isCorrect && onCompleted) {
-      onCompleted();
+    const correctChoice = Boolean(SCENARIO_OPTIONS.find((o) => o.id === selectedId)?.isCorrect);
+    if (correctChoice) {
+      setSolvedQuestion(true);
+      if (bothStagesVisited && onCompleted) {
+        onCompleted();
+      }
     }
   };
 
@@ -66,20 +90,48 @@ export const InertiaScenario: React.FC<InertiaScenarioProps> = ({ onCompleted })
       className="my-8 rounded-md border border-[#CBD5E1] bg-white p-5 sm:p-6"
     >
       <div className="border-b border-[#E2E8F0] pb-4">
-        <p className="text-xs font-semibold tracking-[0.01em] text-[#2563EB]">Interactive Activity 2</p>
-        <h3 id="activity-2-title" className="mt-1 text-lg font-semibold text-[#172033]">
-          Inertia Scenario: The Braking Bus
-        </h3>
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <p className="text-xs font-semibold tracking-[0.01em] text-[#2563EB]">Interactive Activity 2</p>
+            <h3 id="activity-2-title" className="mt-1 text-lg font-semibold text-[#172033]">
+              Inertia Scenario: The Braking Bus
+            </h3>
+          </div>
+          {isCompleted && (
+            <span className="surface-enter inline-flex items-center gap-1 rounded border border-[#BBF7D0] bg-[#F0FDF4] px-2.5 py-1 text-xs font-semibold text-[#15803D]">
+              <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+              Activity Completed
+            </span>
+          )}
+        </div>
         <p className="mt-1 text-sm text-[#475569]">
-          Switch between the two moments below to compare the motion of the bus and the standing passenger, then answer the scenario question.
+          Compare both motion stages below (Before Braking and Sudden Braking) and answer the scenario question correctly to complete this activity.
         </p>
+        <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
+          <span
+            className={`inline-flex items-center gap-1 font-medium ${
+              bothStagesVisited || isCompleted ? 'text-[#15803D]' : 'text-[#64748B]'
+            }`}
+          >
+            <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+            {(visitedCruising ? 1 : 0) + (visitedBraking ? 1 : 0)}/2 stages explored
+          </span>
+          <span
+            className={`inline-flex items-center gap-1 font-medium ${
+              solvedQuestion || isCompleted ? 'text-[#15803D]' : 'text-[#64748B]'
+            }`}
+          >
+            <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+            Explanation solved
+          </span>
+        </div>
       </div>
 
       {/* Phase switcher */}
       <div className="mt-4 flex flex-wrap items-center gap-2" role="group" aria-label="Bus motion stage">
         <button
           type="button"
-          onClick={() => setPhase('cruising')}
+          onClick={() => handlePhaseChange('cruising')}
           aria-pressed={phase === 'cruising'}
           className={`tactile-press rounded-md border px-3.5 py-2 text-xs sm:text-sm font-medium min-h-[40px] ${
             phase === 'cruising'
@@ -91,7 +143,7 @@ export const InertiaScenario: React.FC<InertiaScenarioProps> = ({ onCompleted })
         </button>
         <button
           type="button"
-          onClick={() => setPhase('braking')}
+          onClick={() => handlePhaseChange('braking')}
           aria-pressed={phase === 'braking'}
           className={`tactile-press rounded-md border px-3.5 py-2 text-xs sm:text-sm font-medium min-h-[40px] ${
             phase === 'braking'
@@ -185,6 +237,11 @@ export const InertiaScenario: React.FC<InertiaScenarioProps> = ({ onCompleted })
               {isCorrect ? 'Correct Explanation' : 'Misconception Check'}
             </p>
             <p className="mt-1">{selectedOption.feedback}</p>
+            {isCorrect && !bothStagesVisited && (
+              <p className="mt-1.5 font-medium text-[#1E40AF]">
+                Now click “1. Before Braking (Constant Velocity)” above to compare both moments and complete this activity.
+              </p>
+            )}
           </div>
         </div>
       )}

@@ -1,28 +1,29 @@
 import React from 'react';
 import { LessonFooterNav } from '../Layout/LessonFooterNav';
 import { LessonHeader, ObjectiveBox } from '../common/Blocks';
+import { LessonAssessment } from '../common/LessonAssessment';
 import { SynthesisForceDiagram } from '../diagrams/ForceComparisonDiagrams';
 import { IntegratedSynthesisActivity } from '../activities/IntegratedSynthesisActivity';
-import { ScreenId } from '../../physics/calculations';
+import { AssessmentResultSummary, ScreenId } from '../../physics/calculations';
+import { LessonProgressRecord } from '../../physics/progress';
 
 interface LessonProps {
-  isCompleted: boolean;
+  lessonRecord: LessonProgressRecord;
+  isNextLocked: boolean;
   onNavigate: (id: ScreenId) => void;
-  onCompleteLesson: () => void;
-  onActivityUsed: (activityId: string) => void;
+  onActivityCompleted: (activityId: string) => void;
+  onAssessmentSubmitted: (result: AssessmentResultSummary) => void;
+  onLockedNextAttempt: () => void;
 }
 
 export const Lesson5Synthesis: React.FC<LessonProps> = ({
-  isCompleted,
+  lessonRecord,
+  isNextLocked,
   onNavigate,
-  onCompleteLesson,
-  onActivityUsed,
+  onActivityCompleted,
+  onAssessmentSubmitted,
+  onLockedNextAttempt,
 }) => {
-  const handleCompleted = () => {
-    onActivityUsed('integrated-synthesis');
-    onCompleteLesson();
-  };
-
   return (
     <article>
       <LessonHeader
@@ -30,7 +31,7 @@ export const Lesson5Synthesis: React.FC<LessonProps> = ({
         title="Putting the Laws Together"
         duration="15 min"
         objectiveTag="Objective 6"
-        isCompleted={isCompleted}
+        isCompleted={lessonRecord.completed}
       />
 
       <ObjectiveBox objective="Interpret simple real-world force-and-motion situations using Newton's laws." />
@@ -66,7 +67,10 @@ export const Lesson5Synthesis: React.FC<LessonProps> = ({
         <SynthesisForceDiagram />
       </section>
 
-      <IntegratedSynthesisActivity onCompleted={handleCompleted} />
+      <IntegratedSynthesisActivity
+        isCompleted={Boolean(lessonRecord.activities['integrated-synthesis'])}
+        onCompleted={() => onActivityCompleted('integrated-synthesis')}
+      />
 
       {/* Reference Solution Summary */}
       <section aria-labelledby="synth-summary-heading" className="my-8 rounded-md border border-[#E2E8F0] bg-[#F8FAFC] p-5">
@@ -93,12 +97,20 @@ export const Lesson5Synthesis: React.FC<LessonProps> = ({
         </dl>
       </section>
 
+      <LessonAssessment
+        lessonId="lesson-5"
+        lessonRecord={lessonRecord}
+        onSubmitAssessment={onAssessmentSubmitted}
+        onNavigate={onNavigate}
+      />
+
       <LessonFooterNav
         currentScreen="lesson-5"
-        isCompleted={isCompleted}
+        isCompleted={lessonRecord.completed}
+        isNextLocked={isNextLocked}
         onNavigate={onNavigate}
-        onMarkComplete={onCompleteLesson}
-        completionHint="Complete the 5-step guided practice above before starting the Final Module Assessment."
+        onLockedNextAttempt={onLockedNextAttempt}
+        completionHint="Verify the 5-step guided practice and score at least 70% on the Lesson 5 Assessment above to unlock the Final Module Assessment."
       />
     </article>
   );

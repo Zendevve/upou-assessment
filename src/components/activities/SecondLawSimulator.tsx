@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Pause, Play, RotateCcw } from 'lucide-react';
+import { CheckCircle2, Pause, Play, RotateCcw } from 'lucide-react';
 import { calculateAcceleration, formatNum } from '../../physics/calculations';
 import {
   computePointerVelocity,
@@ -9,20 +9,26 @@ import {
 } from '../../utils/fluidMotion';
 
 interface SecondLawSimulatorProps {
-  onInteracted?: () => void;
+  isCompleted?: boolean;
+  onCompleted?: () => void;
 }
 
 const MIN_PCT = 12;
 const MAX_PCT = 88;
 const SVG_WIDTH = 480;
 
-export const SecondLawSimulator: React.FC<SecondLawSimulatorProps> = ({ onInteracted }) => {
+export const SecondLawSimulator: React.FC<SecondLawSimulatorProps> = ({
+  isCompleted = false,
+  onCompleted,
+}) => {
   const [forceInput, setForceInput] = useState<string>('20');
   const [massInput, setMassInput] = useState<string>('5');
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [cartOffsetPct, setCartOffsetPct] = useState<number>(50); // 12..88% along track
   const [velocityMs, setVelocityMs] = useState<number>(0);
   const [isDraggingCart, setIsDraggingCart] = useState<boolean>(false);
+  const [testedConfigs, setTestedConfigs] = useState<string[]>([]);
+  const [observedMotion, setObservedMotion] = useState<boolean>(isCompleted);
 
   const parsedForce = forceInput.trim() === '' ? NaN : Number(forceInput);
   const parsedMass = massInput.trim() === '' ? NaN : Number(massInput);
@@ -77,8 +83,32 @@ export const SecondLawSimulator: React.FC<SecondLawSimulatorProps> = ({ onIntera
     };
   }, [isPlaying, calc.valid, calc.accelerationMs2, isDraggingCart]);
 
-  const markUsed = () => {
-    if (onInteracted) onInteracted();
+  const recordExperiment = (
+    nextForceStr: string,
+    nextMassStr: string,
+    motionTriggered = false
+  ) => {
+    const fNum = nextForceStr.trim() === '' ? NaN : Number(nextForceStr);
+    const mNum = nextMassStr.trim() === '' ? NaN : Number(nextMassStr);
+    const nextCalc = calculateAcceleration(fNum, mNum);
+
+    let nextConfigs = testedConfigs;
+    if (nextCalc.valid) {
+      const key = `${formatNum(fNum)}:${formatNum(mNum)}`;
+      if (!testedConfigs.includes(key)) {
+        nextConfigs = [...testedConfigs, key];
+        setTestedConfigs(nextConfigs);
+      }
+    }
+
+    const nextMotion = observedMotion || motionTriggered;
+    if (motionTriggered && !observedMotion) {
+      setObservedMotion(true);
+    }
+
+    if (nextConfigs.length >= 2 && nextMotion && onCompleted) {
+      onCompleted();
+    }
   };
 
   const handleReset = () => {
@@ -87,16 +117,17 @@ export const SecondLawSimulator: React.FC<SecondLawSimulatorProps> = ({ onIntera
     setMassInput('5');
     setCartOffsetPct(50);
     setVelocityMs(0);
-    markUsed();
   };
 
   const applyPreset = (f: number, m: number) => {
+    const fStr = String(f);
+    const mStr = String(m);
     setIsPlaying(false);
-    setForceInput(String(f));
-    setMassInput(String(m));
+    setForceInput(fStr);
+    setMassInput(mStr);
     setCartOffsetPct(50);
     setVelocityMs(0);
-    markUsed();
+    recordExperiment(fStr, mStr, false);
   };
 
   const clientXToTrackPct = (clientX: number): number => {
@@ -130,7 +161,7 @@ export const SecondLawSimulator: React.FC<SecondLawSimulatorProps> = ({ onIntera
     setIsDraggingCart(true);
     setIsPlaying(false);
     setVelocityMs(0);
-    markUsed();
+    recordExperiment(forceInput, massInput, true);
   };
 
   const handleCartPointerMove = (e: React.PointerEvent<SVGGElement>) => {
@@ -212,8 +243,31 @@ export const SecondLawSimulator: React.FC<SecondLawSimulatorProps> = ({ onIntera
             Newton’s Second Law Simulator (F_net = ma)
           </h3>
           <p className="mt-1 text-sm text-[#475569]">
-            Adjust net force and mass, press Run Motion, or grab and flick the box directly along the track.
+            Test at least 2 different force–mass combinations and observe the motion (press Run Motion or drag the box) to complete this activity.
           </p>
+          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs">
+            <span
+              className={`inline-flex items-center gap-1 font-medium ${
+                isCompleted || testedConfigs.length >= 2 ? 'text-[#15803D]' : 'text-[#64748B]'
+              }`}
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+              {isCompleted ? '2/2' : `${Math.min(2, testedConfigs.length)}/2`} combinations tested
+            </span>
+            <span
+              className={`inline-flex items-center gap-1 font-medium ${
+                isCompleted || observedMotion ? 'text-[#15803D]' : 'text-[#64748B]'
+              }`}
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
+              Motion observed
+            </span>
+            {isCompleted && (
+              <span className="surface-enter rounded border border-[#BBF7D0] bg-[#F0FDF4] px-2 py-0.5 font-semibold text-[#15803D]">
+                Activity Completed
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
@@ -222,7 +276,7 @@ export const SecondLawSimulator: React.FC<SecondLawSimulatorProps> = ({ onIntera
             disabled={!calc.valid || calc.accelerationMs2 === 0}
             onClick={() => {
               setIsPlaying((p) => !p);
-              markUsed();
+              recordExperiment(forceInput, massInput, true);
             }}
             className="tactile-press inline-flex items-center gap-1.5 rounded-md bg-[#2563EB] px-3.5 py-2 text-xs font-medium text-white hover:bg-[#1D4ED8] disabled:opacity-45 disabled:cursor-not-allowed min-h-[40px]"
           >
@@ -550,8 +604,9 @@ export const SecondLawSimulator: React.FC<SecondLawSimulatorProps> = ({ onIntera
                 step={1}
                 value={forceInput}
                 onChange={(e) => {
-                  setForceInput(e.target.value);
-                  markUsed();
+                  const val = e.target.value;
+                  setForceInput(val);
+                  recordExperiment(val, massInput, false);
                 }}
                 className="w-24 rounded-md border border-[#CBD5E1] bg-white px-3 py-2 font-mono text-sm text-[#172033] tabular-nums min-h-[44px]"
               />
@@ -563,8 +618,9 @@ export const SecondLawSimulator: React.FC<SecondLawSimulatorProps> = ({ onIntera
                 step={1}
                 value={clampedForceSlider}
                 onChange={(e) => {
-                  setForceInput(e.target.value);
-                  markUsed();
+                  const val = e.target.value;
+                  setForceInput(val);
+                  recordExperiment(val, massInput, false);
                 }}
                 className="physics-slider flex-1"
               />
@@ -594,8 +650,9 @@ export const SecondLawSimulator: React.FC<SecondLawSimulatorProps> = ({ onIntera
                 step={0.5}
                 value={massInput}
                 onChange={(e) => {
-                  setMassInput(e.target.value);
-                  markUsed();
+                  const val = e.target.value;
+                  setMassInput(val);
+                  recordExperiment(forceInput, val, false);
                 }}
                 aria-invalid={!calc.valid}
                 className={`w-24 rounded-md border bg-white px-3 py-2 font-mono text-sm text-[#172033] tabular-nums min-h-[44px] transition-colors duration-150 ${
@@ -610,8 +667,9 @@ export const SecondLawSimulator: React.FC<SecondLawSimulatorProps> = ({ onIntera
                 step={1}
                 value={clampedMassSlider}
                 onChange={(e) => {
-                  setMassInput(e.target.value);
-                  markUsed();
+                  const val = e.target.value;
+                  setMassInput(val);
+                  recordExperiment(forceInput, val, false);
                 }}
                 className="physics-slider flex-1"
               />

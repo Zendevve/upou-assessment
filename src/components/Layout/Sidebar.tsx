@@ -1,8 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { animate } from 'motion';
-import { CheckCircle2, Circle, RotateCcw, X } from 'lucide-react';
+import { AlertCircle, Check, Lock, RotateCcw, X } from 'lucide-react';
 import { COURSE_INFO, LESSON_NAV_ITEMS } from '../../data/moduleContent';
-import { calculateOverallProgress, ScreenId } from '../../physics/calculations';
+import { ScreenId } from '../../physics/calculations';
+import {
+  calculateLessonProgress,
+  calculateOverallModuleProgress,
+  canAccessScreen,
+  isLessonId,
+  LOCKED_LESSON_MESSAGE,
+  ModuleProgressState,
+} from '../../physics/progress';
 import {
   computePointerVelocity,
   prefersReducedMotion,
@@ -12,18 +20,83 @@ import {
 } from '../../utils/fluidMotion';
 
 interface SidebarProps {
-  currentScreen: ScreenId;
-  completedScreens: ScreenId[];
+  progressState: ModuleProgressState;
+  lockNotice: string | null;
   onNavigate: (screenId: ScreenId) => void;
+  onLockedAttempt: (targetScreen: ScreenId) => void;
   onResetProgress: () => void;
   isOpenMobile: boolean;
   onCloseMobile: () => void;
 }
 
+const RING_RADIUS = 9;
+const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+
+const LessonProgressRing: React.FC<{
+  percentage: number;
+  isCompleted: boolean;
+  isLocked: boolean;
+  isCurrent: boolean;
+  label: string;
+}> = ({ percentage, isCompleted, isLocked, isCurrent, label }) => {
+  const clamped = Math.max(0, Math.min(100, percentage));
+  const strokeDashoffset = RING_CIRCUMFERENCE * (1 - clamped / 100);
+
+  if (isLocked) {
+    return (
+      <span
+        role="img"
+        aria-label={`${label}: Locked`}
+        className="relative inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[#CBD5E1] bg-[#F1F5F9] text-[#94A3B8]"
+      >
+        <Lock className="h-3 w-3" aria-hidden="true" />
+      </span>
+    );
+  }
+
+  return (
+    <span
+      role="img"
+      aria-label={`${label} progress: ${clamped}%`}
+      className="relative inline-flex h-6 w-6 shrink-0 items-center justify-center"
+    >
+      <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden="true">
+        <circle
+          cx="12"
+          cy="12"
+          r={RING_RADIUS}
+          fill={isCompleted ? '#F0FDF4' : 'none'}
+          stroke={isCompleted ? '#15803D' : isCurrent ? '#BFDBFE' : '#CBD5E1'}
+          strokeWidth="2.5"
+        />
+        {clamped > 0 && !isCompleted && (
+          <circle
+            cx="12"
+            cy="12"
+            r={RING_RADIUS}
+            fill="none"
+            stroke="#2563EB"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeDasharray={RING_CIRCUMFERENCE}
+            strokeDashoffset={strokeDashoffset}
+            transform="rotate(-90 12 12)"
+            className="transition-[stroke-dashoffset] duration-300 ease-[cubic-bezier(0.23,1,0.32,1)]"
+          />
+        )}
+      </svg>
+      {isCompleted && (
+        <Check className="absolute h-3.5 w-3.5 text-[#15803D]" strokeWidth={2.5} aria-hidden="true" />
+      )}
+    </span>
+  );
+};
+
 export const Sidebar: React.FC<SidebarProps> = ({
-  currentScreen,
-  completedScreens,
+  progressState,
+  lockNotice,
   onNavigate,
+  onLockedAttempt,
   onResetProgress,
   isOpenMobile,
   onCloseMobile,
@@ -56,7 +129,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
     samples: [],
   });
 
-  const { completedCount, totalCount, percentage } = calculateOverallProgress(completedScreens);
+  const currentScreen = progressState.currentScreen;
+  const { completedCount, totalTrackableCount, percentage } =
+    calculateOverallModuleProgress(progressState);
 
   const stopAnimations = () => {
     animControlsRef.current?.stop?.();
@@ -270,7 +345,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
   };
 
-  const handleSelect = (id: ScreenId) => {
+  const handleSelect = (id: ScreenId, isLocked: boolean) => {
+    if (isLocked) {
+      onLockedAttempt(id);
+      return;
+    }
     onNavigate(id);
     onCloseMobile();
   };
@@ -309,7 +388,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="flex items-baseline justify-between text-xs">
             <span className="font-medium text-[#475569]">Module Progress</span>
             <span className="font-mono font-medium text-[#172033] tabular-nums">
-              {completedCount}/{totalCount} · {percentage}%
+              {completedCount}/{totalTrackableCount} · {percentage}%
             </span>
           </div>
           <div
@@ -330,41 +409,91 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Lesson Navigation List */}
       <nav aria-label="Module lessons" className="flex-1 overflow-y-auto px-3 py-4">
+        {lockNotice && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="surface-enter mb-3 rounded-md border border-[#FDE68A] bg-[#FFFBEB] px-3 py-2.5 text-xs text-[#92400E] flex items-start gap-2"
+          >
+            <AlertCircle className="h-4 w-4 shrink-0 text-[#B45309] mt-0.5" aria-hidden="true" />
+            <span>{lockNotice}</span>
+          </div>
+        )}
+
         <ul className="space-y-1">
           {LESSON_NAV_ITEMS.map((item) => {
             const isCurrent = currentScreen === item.id;
-            const isCompleted = completedScreens.includes(item.id);
+            const isUnlocked = canAccessScreen(progressState, item.id);
+            const isLocked = !isUnlocked;
+
+            let itemPct = 0;
+            let itemCompleted = false;
+            if (item.id === 'welcome') {
+              itemCompleted = currentScreen !== 'welcome' || completedCount > 0;
+              itemPct = itemCompleted ? 100 : 0;
+            } else if (isLessonId(item.id)) {
+              const summary = calculateLessonProgress(item.id, progressState.lessons[item.id]);
+              itemPct = summary.percentage;
+              itemCompleted = summary.completed;
+            } else if (item.id === 'assessment') {
+              itemCompleted = progressState.finalAssessmentCompleted;
+              itemPct = itemCompleted ? 100 : 0;
+            }
+
+            const statusLabel = isLocked
+              ? 'Locked'
+              : itemCompleted
+              ? 'Completed'
+              : item.id === 'welcome'
+              ? 'Overview'
+              : `${itemPct}%`;
+
+            const buttonAriaLabel = isLocked
+              ? `${item.shortLabel}: ${item.title} — Locked. ${LOCKED_LESSON_MESSAGE}`
+              : `${item.shortLabel}: ${item.title} — ${item.shortLabel} progress: ${itemPct}%`;
+
             return (
               <li key={item.id}>
                 <button
                   type="button"
-                  onClick={() => handleSelect(item.id)}
+                  onClick={() => handleSelect(item.id, isLocked)}
                   aria-current={isCurrent ? 'page' : undefined}
-                  className={`group tactile-press w-full text-left flex items-start gap-3 rounded-md px-3 py-2.5 min-h-[44px] border ${
-                    isCurrent
-                      ? 'bg-[#EFF6FF] text-[#172033] border-[#BFDBFE] shadow-[0_1px_2px_rgba(37,99,235,0.08)]'
-                      : 'text-[#334155] border-transparent hover:bg-white hover:border-[#E2E8F0]'
+                  aria-disabled={isLocked ? 'true' : undefined}
+                  tabIndex={isLocked ? -1 : 0}
+                  aria-label={buttonAriaLabel}
+                  data-screen-id={item.id}
+                  data-locked={isLocked ? 'true' : 'false'}
+                  data-progress-percent={itemPct}
+                  className={`group w-full text-left flex items-center gap-3 rounded-md px-3 py-2.5 min-h-[44px] border transition-colors duration-150 ${
+                    isLocked
+                      ? 'border-transparent bg-transparent text-[#94A3B8] opacity-75 cursor-not-allowed'
+                      : isCurrent
+                      ? 'tactile-press bg-[#EFF6FF] text-[#172033] border-[#BFDBFE] shadow-[0_1px_2px_rgba(37,99,235,0.08)]'
+                      : 'tactile-press text-[#334155] border-transparent hover:bg-white hover:border-[#E2E8F0]'
                   }`}
                 >
-                  <span className="mt-0.5 shrink-0" aria-hidden="true">
-                    {isCompleted ? (
-                      <CheckCircle2 className="h-4 w-4 text-[#15803D]" />
-                    ) : (
-                      <Circle
-                        className={`h-4 w-4 transition-colors duration-150 ${
-                          isCurrent ? 'text-[#2563EB]' : 'text-[#94A3B8] group-hover:text-[#64748B]'
-                        }`}
-                      />
-                    )}
-                  </span>
+                  <LessonProgressRing
+                    percentage={itemPct}
+                    isCompleted={itemCompleted}
+                    isLocked={isLocked}
+                    isCurrent={isCurrent}
+                    label={item.shortLabel}
+                  />
                   <span className="min-w-0 flex-1">
-                    <span className="block text-xs tracking-[0.008em] text-[#64748B]">
-                      {item.shortLabel} · {item.duration}
-                      {isCompleted ? ' · Completed' : ''}
+                    <span
+                      className={`block text-xs tracking-[0.008em] ${
+                        isLocked ? 'text-[#94A3B8]' : 'text-[#64748B]'
+                      }`}
+                    >
+                      {item.shortLabel} · {item.duration} · {statusLabel}
                     </span>
                     <span
                       className={`mt-0.5 block text-sm leading-snug ${
-                        isCurrent ? 'font-semibold text-[#1E3A8A]' : 'font-medium text-[#172033]'
+                        isLocked
+                          ? 'font-medium text-[#64748B]'
+                          : isCurrent
+                          ? 'font-semibold text-[#1E3A8A]'
+                          : 'font-medium text-[#172033]'
                       }`}
                     >
                       {item.title}

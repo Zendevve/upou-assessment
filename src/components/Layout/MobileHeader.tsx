@@ -1,21 +1,24 @@
 import React from 'react';
 import { Menu } from 'lucide-react';
 import { LESSON_NAV_ITEMS } from '../../data/moduleContent';
-import { calculateOverallProgress, ScreenId } from '../../physics/calculations';
+import {
+  calculateOverallModuleProgress,
+  ModuleProgressState,
+} from '../../physics/progress';
 
 interface MobileHeaderProps {
-  currentScreen: ScreenId;
-  completedScreens: ScreenId[];
+  progressState: ModuleProgressState;
   onOpenMenu: () => void;
 }
 
 export const MobileHeader: React.FC<MobileHeaderProps> = ({
-  currentScreen,
-  completedScreens,
+  progressState,
   onOpenMenu,
 }) => {
-  const currentItem = LESSON_NAV_ITEMS.find((item) => item.id === currentScreen) ?? LESSON_NAV_ITEMS[0];
-  const { percentage } = calculateOverallProgress(completedScreens);
+  const currentItem =
+    LESSON_NAV_ITEMS.find((item) => item.id === progressState.currentScreen) ??
+    LESSON_NAV_ITEMS[0];
+  const { percentage } = calculateOverallModuleProgress(progressState);
 
   return (
     <header className="mobile-topbar translucent-chrome lg:hidden sticky top-0 z-30">

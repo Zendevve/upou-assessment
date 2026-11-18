@@ -6,21 +6,27 @@ import {
   MisconceptionCallout,
   ObjectiveBox,
 } from '../common/Blocks';
+import { LessonAssessment } from '../common/LessonAssessment';
 import { ActionReactionActivity } from '../activities/ActionReactionActivity';
-import { ScreenId } from '../../physics/calculations';
+import { AssessmentResultSummary, ScreenId } from '../../physics/calculations';
+import { LessonProgressRecord } from '../../physics/progress';
 
 interface LessonProps {
-  isCompleted: boolean;
+  lessonRecord: LessonProgressRecord;
+  isNextLocked: boolean;
   onNavigate: (id: ScreenId) => void;
-  onCompleteLesson: () => void;
-  onActivityUsed: (activityId: string) => void;
+  onActivityCompleted: (activityId: string) => void;
+  onAssessmentSubmitted: (result: AssessmentResultSummary) => void;
+  onLockedNextAttempt: () => void;
 }
 
 export const Lesson4ThirdLaw: React.FC<LessonProps> = ({
-  isCompleted,
+  lessonRecord,
+  isNextLocked,
   onNavigate,
-  onCompleteLesson,
-  onActivityUsed,
+  onActivityCompleted,
+  onAssessmentSubmitted,
+  onLockedNextAttempt,
 }) => {
   return (
     <article>
@@ -29,7 +35,7 @@ export const Lesson4ThirdLaw: React.FC<LessonProps> = ({
         title="Newton's Third Law"
         duration="25 min"
         objectiveTag="Objective 5"
-        isCompleted={isCompleted}
+        isCompleted={lessonRecord.completed}
       />
 
       <ObjectiveBox objective="Explain Newton's Third Law by identifying interacting objects and their force pairs." />
@@ -104,7 +110,8 @@ export const Lesson4ThirdLaw: React.FC<LessonProps> = ({
         </p>
 
         <ActionReactionActivity
-          onAllScenariosCompleted={() => onActivityUsed('action-reaction-identifier')}
+          isCompleted={Boolean(lessonRecord.activities['action-reaction-identifier'])}
+          onAllScenariosCompleted={() => onActivityCompleted('action-reaction-identifier')}
         />
       </section>
 
@@ -135,16 +142,24 @@ export const Lesson4ThirdLaw: React.FC<LessonProps> = ({
               'Liquids definitely exert forces—that forward push from the water is what accelerates the swimmer across the pool.',
           },
         ]}
-        alreadyPassed={isCompleted}
-        onPassed={onCompleteLesson}
+        alreadyPassed={Boolean(lessonRecord.activities['lesson-4-kc'])}
+        onPassed={() => onActivityCompleted('lesson-4-kc')}
+      />
+
+      <LessonAssessment
+        lessonId="lesson-4"
+        lessonRecord={lessonRecord}
+        onSubmitAssessment={onAssessmentSubmitted}
+        onNavigate={onNavigate}
       />
 
       <LessonFooterNav
         currentScreen="lesson-4"
-        isCompleted={isCompleted}
+        isCompleted={lessonRecord.completed}
+        isNextLocked={isNextLocked}
         onNavigate={onNavigate}
-        onMarkComplete={onCompleteLesson}
-        completionHint="Complete the Lesson 4 Knowledge Check above to mark this lesson complete."
+        onLockedNextAttempt={onLockedNextAttempt}
+        completionHint="Solve all 3 force-pair scenarios, complete the Knowledge Check, and score at least 70% on the Lesson 4 Assessment above to unlock Lesson 5."
       />
     </article>
   );

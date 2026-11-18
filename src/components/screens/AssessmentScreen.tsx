@@ -21,7 +21,7 @@ import {
 import { LessonHeader } from '../common/Blocks';
 
 interface AssessmentScreenProps {
-  completedScreens: ScreenId[];
+  completedLessonsCount: number;
   assessmentAttempts: number;
   latestAssessment: AssessmentResultSummary | null;
   onSubmitAssessment: (result: AssessmentResultSummary) => void;
@@ -31,7 +31,7 @@ interface AssessmentScreenProps {
 type ViewMode = 'taking' | 'confirm' | 'results';
 
 export const AssessmentScreen: React.FC<AssessmentScreenProps> = ({
-  completedScreens,
+  completedLessonsCount,
   assessmentAttempts,
   latestAssessment,
   onSubmitAssessment,
@@ -85,8 +85,6 @@ export const AssessmentScreen: React.FC<AssessmentScreenProps> = ({
     setCurrentIndex(0);
     setViewMode('taking');
   };
-
-  const completedLessonsCount = completedScreens.filter((id) => id.startsWith('lesson-')).length;
 
   return (
     <article>

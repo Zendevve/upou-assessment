@@ -7,21 +7,27 @@ import {
   ObjectiveBox,
   WorkedExample,
 } from '../common/Blocks';
+import { LessonAssessment } from '../common/LessonAssessment';
 import { SecondLawSimulator } from '../activities/SecondLawSimulator';
-import { ScreenId } from '../../physics/calculations';
+import { AssessmentResultSummary, ScreenId } from '../../physics/calculations';
+import { LessonProgressRecord } from '../../physics/progress';
 
 interface LessonProps {
-  isCompleted: boolean;
+  lessonRecord: LessonProgressRecord;
+  isNextLocked: boolean;
   onNavigate: (id: ScreenId) => void;
-  onCompleteLesson: () => void;
-  onActivityUsed: (activityId: string) => void;
+  onActivityCompleted: (activityId: string) => void;
+  onAssessmentSubmitted: (result: AssessmentResultSummary) => void;
+  onLockedNextAttempt: () => void;
 }
 
 export const Lesson3SecondLaw: React.FC<LessonProps> = ({
-  isCompleted,
+  lessonRecord,
+  isNextLocked,
   onNavigate,
-  onCompleteLesson,
-  onActivityUsed,
+  onActivityCompleted,
+  onAssessmentSubmitted,
+  onLockedNextAttempt,
 }) => {
   return (
     <article>
@@ -30,7 +36,7 @@ export const Lesson3SecondLaw: React.FC<LessonProps> = ({
         title="Newton's Second Law"
         duration="30 min"
         objectiveTag="Objective 4"
-        isCompleted={isCompleted}
+        isCompleted={lessonRecord.completed}
       />
 
       <ObjectiveBox objective="Apply Newton's Second Law using F_net = ma." />
@@ -108,7 +114,10 @@ export const Lesson3SecondLaw: React.FC<LessonProps> = ({
           Use the simulator below to test what happens when you double the net force or double the mass.
         </p>
 
-        <SecondLawSimulator onInteracted={() => onActivityUsed('second-law-simulator')} />
+        <SecondLawSimulator
+          isCompleted={Boolean(lessonRecord.activities['second-law-simulator'])}
+          onCompleted={() => onActivityCompleted('second-law-simulator')}
+        />
       </section>
 
       <KnowledgeCheck
@@ -138,16 +147,24 @@ export const Lesson3SecondLaw: React.FC<LessonProps> = ({
               'Two checks: divide F_net by m (18 / 6 = 3), and remember acceleration always points in the direction of the net force (to the right).',
           },
         ]}
-        alreadyPassed={isCompleted}
-        onPassed={onCompleteLesson}
+        alreadyPassed={Boolean(lessonRecord.activities['lesson-3-kc'])}
+        onPassed={() => onActivityCompleted('lesson-3-kc')}
+      />
+
+      <LessonAssessment
+        lessonId="lesson-3"
+        lessonRecord={lessonRecord}
+        onSubmitAssessment={onAssessmentSubmitted}
+        onNavigate={onNavigate}
       />
 
       <LessonFooterNav
         currentScreen="lesson-3"
-        isCompleted={isCompleted}
+        isCompleted={lessonRecord.completed}
+        isNextLocked={isNextLocked}
         onNavigate={onNavigate}
-        onMarkComplete={onCompleteLesson}
-        completionHint="Complete the Lesson 3 Practice Question above to mark this lesson complete."
+        onLockedNextAttempt={onLockedNextAttempt}
+        completionHint="Complete both Lesson 3 interactive tasks and score at least 70% on the Lesson 3 Assessment above to unlock Lesson 4."
       />
     </article>
   );

@@ -7,22 +7,28 @@ import {
   MisconceptionCallout,
   ObjectiveBox,
 } from '../common/Blocks';
+import { LessonAssessment } from '../common/LessonAssessment';
 import { ForceComparisonDiagrams } from '../diagrams/ForceComparisonDiagrams';
 import { NetForceCalculator } from '../activities/NetForceCalculator';
-import { ScreenId } from '../../physics/calculations';
+import { AssessmentResultSummary, ScreenId } from '../../physics/calculations';
+import { LessonProgressRecord } from '../../physics/progress';
 
 interface LessonProps {
-  isCompleted: boolean;
+  lessonRecord: LessonProgressRecord;
+  isNextLocked: boolean;
   onNavigate: (id: ScreenId) => void;
-  onCompleteLesson: () => void;
-  onActivityUsed: (activityId: string) => void;
+  onActivityCompleted: (activityId: string) => void;
+  onAssessmentSubmitted: (result: AssessmentResultSummary) => void;
+  onLockedNextAttempt: () => void;
 }
 
 export const Lesson1Forces: React.FC<LessonProps> = ({
-  isCompleted,
+  lessonRecord,
+  isNextLocked,
   onNavigate,
-  onCompleteLesson,
-  onActivityUsed,
+  onActivityCompleted,
+  onAssessmentSubmitted,
+  onLockedNextAttempt,
 }) => {
   return (
     <article>
@@ -31,7 +37,7 @@ export const Lesson1Forces: React.FC<LessonProps> = ({
         title="Understanding Forces"
         duration="20 min"
         objectiveTag="Objective 1"
-        isCompleted={isCompleted}
+        isCompleted={lessonRecord.completed}
       />
 
       <ObjectiveBox objective="Define force and distinguish between balanced and unbalanced forces." />
@@ -104,7 +110,10 @@ export const Lesson1Forces: React.FC<LessonProps> = ({
           Experiment with the Net Force Calculator below. Try creating a balanced pair, a net force to the right, and a net force to the left.
         </p>
 
-        <NetForceCalculator onInteracted={() => onActivityUsed('net-force-calculator')} />
+        <NetForceCalculator
+          isCompleted={Boolean(lessonRecord.activities['net-force-calculator'])}
+          onCompleted={() => onActivityCompleted('net-force-calculator')}
+        />
       </section>
 
       <KnowledgeCheck
@@ -134,16 +143,24 @@ export const Lesson1Forces: React.FC<LessonProps> = ({
               'Both forces act on the crate, so both must be included when calculating the net force.',
           },
         ]}
-        alreadyPassed={isCompleted}
-        onPassed={onCompleteLesson}
+        alreadyPassed={Boolean(lessonRecord.activities['lesson-1-kc'])}
+        onPassed={() => onActivityCompleted('lesson-1-kc')}
+      />
+
+      <LessonAssessment
+        lessonId="lesson-1"
+        lessonRecord={lessonRecord}
+        onSubmitAssessment={onAssessmentSubmitted}
+        onNavigate={onNavigate}
       />
 
       <LessonFooterNav
         currentScreen="lesson-1"
-        isCompleted={isCompleted}
+        isCompleted={lessonRecord.completed}
+        isNextLocked={isNextLocked}
         onNavigate={onNavigate}
-        onMarkComplete={onCompleteLesson}
-        completionHint="Complete the Lesson 1 Knowledge Check above to mark this lesson complete automatically."
+        onLockedNextAttempt={onLockedNextAttempt}
+        completionHint="Complete both Lesson 1 interactive tasks and score at least 70% on the Lesson 1 Assessment above to unlock Lesson 2."
       />
     </article>
   );
