@@ -70,14 +70,14 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Tactile press feedback on pointer-down (instantaneous feel) */
+/* Tactile press feedback on pointer-down (instantaneous feel, --ease-out everywhere) */
 .tactile-press {
   transition:
-    transform 140ms var(--ease-out),
-    background-color 150ms ease,
-    border-color 150ms ease,
-    color 150ms ease,
-    box-shadow 150ms var(--ease-out);
+    transform 130ms var(--ease-out),
+    background-color 140ms var(--ease-out),
+    border-color 140ms var(--ease-out),
+    color 140ms var(--ease-out),
+    box-shadow 140ms var(--ease-out);
   touch-action: manipulation;
 }
 
@@ -87,10 +87,10 @@
 
 .tactile-card {
   transition:
-    transform 150ms var(--ease-out),
-    background-color 150ms ease,
-    border-color 150ms ease,
-    box-shadow 160ms var(--ease-out);
+    transform 140ms var(--ease-out),
+    background-color 140ms var(--ease-out),
+    border-color 140ms var(--ease-out),
+    box-shadow 150ms var(--ease-out);
   touch-action: manipulation;
 }
 
@@ -98,7 +98,7 @@
   transform: scale(0.988);
 }
 
-/* Gate hover elevations behind fine pointer capability so touch taps never stick */
+/* Gate hover elevations & shifts behind fine pointer capability so touch taps never stick */
 @media (hover: hover) and (pointer: fine) {
   .hover-lift:hover:not(:disabled) {
     transform: translateY(-1px);
@@ -117,15 +117,15 @@
   }
 }
 
-/* Non-blocking subtle GPU entrance for feedback banners and panels (never scale(0)) */
+/* Non-blocking GPU entrance for feedback banners and panels (never scale(0), <250ms) */
 .surface-enter {
-  animation: surfaceReveal 200ms var(--ease-out) both;
+  animation: surfaceReveal 190ms var(--ease-out) both;
 }
 
 @keyframes surfaceReveal {
   from {
     opacity: 0;
-    transform: translateY(6px) scale(0.985);
+    transform: translateY(5px) scale(0.985);
   }
   to {
     opacity: 1;
@@ -133,15 +133,31 @@
   }
 }
 
-/* Crisp screen/question transitions */
+/* Smooth GPU reveal for expanded accordion lists and glossary definitions */
+.accordion-reveal {
+  animation: accordionReveal 160ms var(--ease-out) both;
+}
+
+@keyframes accordionReveal {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Crisp screen/question transitions (<200ms) */
 .screen-enter {
-  animation: screenReveal 190ms var(--ease-out) both;
+  animation: screenReveal 180ms var(--ease-out) both;
 }
 
 @keyframes screenReveal {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: translateY(5px);
   }
   to {
     opacity: 1;
@@ -150,11 +166,11 @@
 }
 
 .step-enter-forward {
-  animation: stepForward 170ms var(--ease-out) both;
+  animation: stepForward 160ms var(--ease-out) both;
 }
 
 .step-enter-backward {
-  animation: stepBackward 170ms var(--ease-out) both;
+  animation: stepBackward 160ms var(--ease-out) both;
 }
 
 @keyframes stepForward {
@@ -181,7 +197,25 @@
 
 /* Subtle non-blocking mount stagger for Welcome objectives (30-45ms spacing) */
 .stagger-item {
-  animation: surfaceReveal 220ms var(--ease-out) both;
+  animation: surfaceReveal 210ms var(--ease-out) both;
+}
+
+/* Apple Scroll Edge Mask for scrollable course navigation and modal bodies */
+.nav-scroll-fade {
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0px,
+    #000 10px,
+    #000 calc(100% - 14px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0px,
+    #000 10px,
+    #000 calc(100% - 14px),
+    transparent 100%
+  );
 }
 
 /* Translucent floating chrome (Apple materials & vibrancy) */
@@ -256,11 +290,12 @@ input[type="range"].physics-slider:active::-moz-range-thumb {
   }
 
   .surface-enter,
+  .accordion-reveal,
   .screen-enter,
   .step-enter-forward,
   .step-enter-backward,
   .stagger-item {
-    animation: fadeOnly 160ms ease both !important;
+    animation: fadeOnly 130ms ease both !important;
   }
 
   .tactile-press:active:not(:disabled),
@@ -271,7 +306,7 @@ input[type="range"].physics-slider:active::-moz-range-thumb {
 
   *, *::before, *::after {
     transition-property: opacity, background-color, border-color, color !important;
-    transition-duration: 140ms !important;
+    transition-duration: 120ms !important;
   }
 }
 

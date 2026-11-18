@@ -20,6 +20,7 @@ import {
   attemptNavigate,
   canAccessScreen,
   getResumeTarget,
+  isLessonId,
   LESSON_IDS,
   LessonId,
   LOCKED_COMPLETION_MESSAGE,
@@ -37,23 +38,32 @@ import {
   resetProgressState,
   saveProgressState,
 } from './utils/storage';
+import { LESSON_SECTIONS } from './data/moduleContent';
 
 function isValidScreenId(value: string | null): value is ScreenId {
   return Boolean(value && (MODULE_SCREEN_IDS as readonly string[]).includes(value));
 }
 
+function findLessonSection(screenId: ScreenId, sectionId: string | null) {
+  if (!sectionId || !isLessonId(screenId)) return null;
+  return LESSON_SECTIONS[screenId].find((sec) => sec.id === sectionId) ?? null;
+}
+
 function parseRequestedScreenFromLocation(): {
   requestedScreen: ScreenId | null;
+  requestedSectionId: string | null;
   hasExplicitScreenParam: boolean;
 } {
   if (typeof window === 'undefined') {
-    return { requestedScreen: null, hasExplicitScreenParam: false };
+    return { requestedScreen: null, requestedSectionId: null, hasExplicitScreenParam: false };
   }
   const params = new URLSearchParams(window.location.search);
   const screenParam = params.get('screen');
+  const sectionParam = params.get('section');
   if (screenParam !== null) {
     return {
       requestedScreen: isValidScreenId(screenParam) ? screenParam : null,
+      requestedSectionId: sectionParam,
       hasExplicitScreenParam: true,
     };
   }
@@ -61,18 +71,24 @@ function parseRequestedScreenFromLocation(): {
   if (hashId) {
     return {
       requestedScreen: isValidScreenId(hashId) ? hashId : null,
+      requestedSectionId: sectionParam,
       hasExplicitScreenParam: true,
     };
   }
   if (params.get('autostart') === '1') {
-    return { requestedScreen: 'lesson-1', hasExplicitScreenParam: false };
+    return { requestedScreen: 'lesson-1', requestedSectionId: null, hasExplicitScreenParam: false };
   }
-  return { requestedScreen: null, hasExplicitScreenParam: false };
+  return { requestedScreen: null, requestedSectionId: null, hasExplicitScreenParam: false };
 }
 
-function buildUrlForScreen(screenId: ScreenId): string {
+function buildUrlForScreen(screenId: ScreenId, sectionId?: string): string {
   const url = new URL(window.location.href);
   url.searchParams.set('screen', screenId);
+  if (sectionId && isLessonId(screenId)) {
+    url.searchParams.set('section', sectionId);
+  } else {
+    url.searchParams.delete('section');
+  }
   url.hash = '';
   return `${url.pathname}${url.search}`;
 }
@@ -81,17 +97,32 @@ export default function App() {
   const [initialBoot] = useState<{
     progress: ModuleProgressState;
     initialLockNotice: string | null;
+    initialScrollSectionId: string | null;
   }>(() => {
     const loaded = loadProgressState();
     if (typeof window === 'undefined') {
-      return { progress: loaded, initialLockNotice: null };
+      return { progress: loaded, initialLockNotice: null, initialScrollSectionId: null };
     }
 
-    const { requestedScreen, hasExplicitScreenParam } = parseRequestedScreenFromLocation();
+    const { requestedScreen, requestedSectionId, hasExplicitScreenParam } =
+      parseRequestedScreenFromLocation();
     if (requestedScreen) {
       const check = attemptNavigate(loaded, requestedScreen);
       if (check.allowed) {
-        return { progress: check.nextState, initialLockNotice: null };
+        const validSection = findLessonSection(requestedScreen, requestedSectionId);
+        const nextProgress = validSection
+          ? recordSectionVisit(
+              check.nextState,
+              requestedScreen,
+              validSection.id,
+              `${validSection.number} ${validSection.title}`
+            )
+          : check.nextState;
+        return {
+          progress: nextProgress,
+          initialLockNotice: null,
+          initialScrollSectionId: validSection?.id ?? null,
+        };
       }
       window.history.replaceState(
         { screenId: loaded.currentScreen },
@@ -101,6 +132,7 @@ export default function App() {
       return {
         progress: loaded,
         initialLockNotice: check.lockReason ?? LOCKED_LESSON_MESSAGE,
+        initialScrollSectionId: null,
       };
     }
 
@@ -112,14 +144,16 @@ export default function App() {
       );
     }
 
-    return { progress: loaded, initialLockNotice: null };
+    return { progress: loaded, initialLockNotice: null, initialScrollSectionId: null };
   });
 
   const [progress, setProgress] = useState<ModuleProgressState>(initialBoot.progress);
   const [lockNotice, setLockNotice] = useState<string | null>(initialBoot.initialLockNotice);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isReferenceOpen, setIsReferenceOpen] = useState(false);
-  const [pendingScrollSectionId, setPendingScrollSectionId] = useState<string | null>(null);
+  const [pendingScrollSectionId, setPendingScrollSectionId] = useState<string | null>(
+    initialBoot.initialScrollSectionId
+  );
 
   const mainRef = useRef<HTMLElement | null>(null);
   const progressRef = useRef(progress);
@@ -213,23 +247,51 @@ export default function App() {
     );
   }, []);
 
-  const navigateTo = useCallback((screenId: ScreenId, scrollSectionId?: string) => {
-    const check = attemptNavigate(progressRef.current, screenId);
-    if (!check.allowed) {
-      setLockNotice(check.lockReason ?? LOCKED_LESSON_MESSAGE);
-      return;
-    }
-    setLockNotice(null);
-    setProgress(check.nextState);
-    if (typeof window !== 'undefined' && screenId !== progressRef.current.currentScreen) {
-      window.history.pushState({ screenId }, '', buildUrlForScreen(screenId));
-    }
-    if (scrollSectionId) {
-      setPendingScrollSectionId(scrollSectionId);
-    } else {
-      window.scrollTo({ top: 0, behavior: 'auto' });
-    }
-  }, []);
+  const navigateTo = useCallback(
+    (screenId: ScreenId, scrollSectionId?: string, scrollSectionLabel?: string) => {
+      const prevScreen = progressRef.current.currentScreen;
+      const check = attemptNavigate(progressRef.current, screenId);
+      if (!check.allowed) {
+        setLockNotice(check.lockReason ?? LOCKED_LESSON_MESSAGE);
+        return;
+      }
+      setLockNotice(null);
+
+      const validSection = scrollSectionId ? findLessonSection(screenId, scrollSectionId) : null;
+      const resolvedSectionId = validSection?.id ?? scrollSectionId;
+      const resolvedLabel =
+        validSection
+          ? `${validSection.number} ${validSection.title}`
+          : scrollSectionLabel ?? scrollSectionId;
+
+      const updatedState =
+        resolvedSectionId && resolvedLabel
+          ? recordSectionVisit(check.nextState, screenId, resolvedSectionId, resolvedLabel)
+          : check.nextState;
+
+      setProgress(updatedState);
+      if (typeof window !== 'undefined' && (screenId !== prevScreen || resolvedSectionId)) {
+        window.history.pushState(
+          { screenId, sectionId: resolvedSectionId },
+          '',
+          buildUrlForScreen(screenId, resolvedSectionId)
+        );
+      }
+      if (resolvedSectionId) {
+        setPendingScrollSectionId(resolvedSectionId);
+      } else {
+        window.scrollTo({ top: 0, behavior: 'auto' });
+      }
+    },
+    []
+  );
+
+  const handleNavigateSection = useCallback(
+    (lessonId: LessonId, sectionId: string, sectionLabel: string) => {
+      navigateTo(lessonId, sectionId, sectionLabel);
+    },
+    [navigateTo]
+  );
 
   const handleStartLearning = useCallback(() => {
     navigateTo('lesson-1');
@@ -279,6 +341,12 @@ export default function App() {
     (id) => progress.lessons[id]?.completed
   ).length;
 
+  const activeSectionId = isLessonId(progress.currentScreen)
+    ? progress.lastVisitedSections[progress.currentScreen]?.sectionId ??
+      LESSON_SECTIONS[progress.currentScreen][0]?.id ??
+      null
+    : null;
+
   return (
     <div className="min-h-screen bg-white text-[#172033] flex flex-col lg:flex-row">
       {/* Skip link for keyboard accessibility */}
@@ -291,12 +359,15 @@ export default function App() {
 
       <Sidebar
         progressState={progress}
+        activeSectionId={activeSectionId}
         lockNotice={lockNotice}
         onNavigate={(id) => navigateTo(id)}
+        onNavigateSection={handleNavigateSection}
         onLockedAttempt={(targetId) => showLockedNotice(targetId)}
         onResetProgress={handleResetProgress}
         onOpenReference={() => setIsReferenceOpen(true)}
         isOpenMobile={isMobileMenuOpen}
+        onOpenMobile={() => setIsMobileMenuOpen(true)}
         onCloseMobile={() => setIsMobileMenuOpen(false)}
       />
 

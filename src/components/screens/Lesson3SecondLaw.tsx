@@ -49,13 +49,17 @@ export const Lesson3SecondLaw: React.FC<LessonProps> = ({
         isCompleted={lessonRecord.completed}
       />
 
-      <LessonIntro intro={LESSON_INTROS['lesson-3']} />
+      <LessonIntro
+        intro={LESSON_INTROS['lesson-3']}
+        sectionId="l3-intro"
+        sectionLabel="1.3.1 Introduction & Objectives"
+      />
 
       <section
         id="l3-second-law"
         data-section-id="l3-second-law"
-        data-section-label="1. Net Force, Mass, Acceleration"
-        className="mt-8 space-y-4 text-sm sm:text-base text-[#334155]"
+        data-section-label="1.3.2 Force, Mass & F_net = ma"
+        className="mt-8 scroll-mt-20 lg:scroll-mt-6 space-y-4 text-sm sm:text-base text-[#334155]"
       >
         <h2 className="text-xl font-semibold text-[#172033]">
           1. Connecting Net Force, Mass, and Acceleration
@@ -93,8 +97,8 @@ export const Lesson3SecondLaw: React.FC<LessonProps> = ({
       <section
         id="l3-worked-examples"
         data-section-id="l3-worked-examples"
-        data-section-label="2. Worked Examples"
-        className="mt-8 space-y-4"
+        data-section-label="1.3.3 Step-by-Step Worked Examples"
+        className="mt-8 scroll-mt-20 lg:scroll-mt-6 space-y-4"
       >
         <h2 className="text-xl font-semibold text-[#172033]">
           2. Worked Examples (Step-by-Step)
@@ -143,8 +147,8 @@ export const Lesson3SecondLaw: React.FC<LessonProps> = ({
       <section
         id="l3-simulator"
         data-section-id="l3-simulator"
-        data-section-label="3. Second Law Simulator"
-        className="mt-8"
+        data-section-label="1.3.4 Activity: Force & Mass Simulator"
+        className="mt-8 scroll-mt-20 lg:scroll-mt-6"
       >
         <h2 className="text-xl font-semibold text-[#172033]">
           3. Interactive Experiment: Force, Mass, and Acceleration
@@ -161,6 +165,8 @@ export const Lesson3SecondLaw: React.FC<LessonProps> = ({
 
       <KnowledgeCheck
         id="lesson-3-kc"
+        sectionId="l3-kc"
+        sectionLabel="1.3.5 Practice Question"
         title="Lesson 3 Practice Question"
         question="A 6 kg cart experiences a net force of 18 N to the right. Using a = F_net / m, what is the cart’s acceleration?"
         options={[
@@ -194,12 +200,15 @@ export const Lesson3SecondLaw: React.FC<LessonProps> = ({
         lessonLabel="Lesson 3"
         summary={LESSON_SUMMARIES['lesson-3']}
         onOpenReference={onOpenReference}
+        sectionId="l3-summary"
+        sectionLabel="1.3.6 Lesson Summary"
       />
 
       <section
         id="l3-assessment"
         data-section-id="l3-assessment"
-        data-section-label="Lesson 3 Mastery Assessment"
+        data-section-label="1.3.7 Lesson 3 Assessment"
+        className="scroll-mt-20 lg:scroll-mt-6"
       >
         <LessonAssessment
           lessonId="lesson-3"

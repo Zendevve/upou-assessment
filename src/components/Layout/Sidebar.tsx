@@ -1,13 +1,28 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { animate } from 'motion';
-import { AlertCircle, BookOpen, Check, Lock, RotateCcw, X } from 'lucide-react';
-import { COURSE_INFO, LESSON_NAV_ITEMS } from '../../data/moduleContent';
+import {
+  AlertCircle,
+  BookOpen,
+  Check,
+  ChevronDown,
+  Lock,
+  RotateCcw,
+  X,
+} from 'lucide-react';
+import {
+  COURSE_INFO,
+  LESSON_NAV_ITEMS,
+  LESSON_SECTIONS,
+  LessonSectionNavItem,
+} from '../../data/moduleContent';
 import { ScreenId } from '../../physics/calculations';
 import {
   calculateLessonProgress,
   calculateOverallModuleProgress,
   canAccessScreen,
   isLessonId,
+  LESSON_IDS,
+  LessonId,
   LOCKED_COMPLETION_MESSAGE,
   LOCKED_LESSON_MESSAGE,
   ModuleProgressState,
@@ -22,12 +37,15 @@ import {
 
 interface SidebarProps {
   progressState: ModuleProgressState;
+  activeSectionId: string | null;
   lockNotice: string | null;
   onNavigate: (screenId: ScreenId) => void;
+  onNavigateSection: (lessonId: LessonId, sectionId: string, sectionLabel: string) => void;
   onLockedAttempt: (targetScreen: ScreenId) => void;
   onResetProgress: () => void;
   onOpenReference: () => void;
   isOpenMobile: boolean;
+  onOpenMobile: () => void;
   onCloseMobile: () => void;
 }
 
@@ -94,23 +112,88 @@ const LessonProgressRing: React.FC<{
   );
 };
 
+const SectionStatusIndicator: React.FC<{
+  isLocked: boolean;
+  isCompleted: boolean;
+  isActive: boolean;
+}> = ({ isLocked, isCompleted, isActive }) => {
+  if (isLocked) {
+    return (
+      <span
+        aria-hidden="true"
+        className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-[#CBD5E1] bg-[#E2E8F0]/75 text-[#64748B]"
+      >
+        <Lock className="h-2.5 w-2.5" />
+      </span>
+    );
+  }
+
+  if (isCompleted) {
+    return (
+      <span
+        aria-hidden="true"
+        className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
+          isActive
+            ? 'border-[#2563EB] bg-[#EFF6FF] text-[#15803D]'
+            : 'border-[#15803D] bg-[#F0FDF4] text-[#15803D]'
+        }`}
+      >
+        <Check className="h-2.5 w-2.5" strokeWidth={2.75} />
+      </span>
+    );
+  }
+
+  if (isActive) {
+    return (
+      <span
+        aria-hidden="true"
+        className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 border-[#2563EB] bg-white"
+      >
+        <span className="h-1.5 w-1.5 rounded-full bg-[#2563EB]" />
+      </span>
+    );
+  }
+
+  return (
+    <span
+      aria-hidden="true"
+      className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-[#CBD5E1] bg-white"
+    />
+  );
+};
+
 export const Sidebar: React.FC<SidebarProps> = ({
   progressState,
+  activeSectionId,
   lockNotice,
   onNavigate,
+  onNavigateSection,
   onLockedAttempt,
   onResetProgress,
   onOpenReference,
   isOpenMobile,
+  onOpenMobile,
   onCloseMobile,
 }) => {
+  const currentScreen = progressState.currentScreen;
+
   const [confirmReset, setConfirmReset] = useState(false);
   const [isRenderedMobile, setIsRenderedMobile] = useState(isOpenMobile);
+  const [isModuleExpanded, setIsModuleExpanded] = useState(true);
+  const [expandedLessons, setExpandedLessons] = useState<Partial<Record<LessonId, boolean>>>(() =>
+    isLessonId(currentScreen) ? { [currentScreen]: true } : {}
+  );
 
+  const prevScreenRef = useRef<ScreenId>(currentScreen);
+  const desktopNavRef = useRef<HTMLElement | null>(null);
+  const mobileNavRef = useRef<HTMLElement | null>(null);
   const drawerRef = useRef<HTMLDivElement | null>(null);
   const scrimRef = useRef<HTMLDivElement | null>(null);
   const animControlsRef = useRef<{ stop?: () => void } | null>(null);
   const scrimControlsRef = useRef<{ stop?: () => void } | null>(null);
+  const gestureSpringInFlightRef = useRef<'open' | 'close' | null>(null);
+  const isOpenMobileRef = useRef(isOpenMobile);
+  isOpenMobileRef.current = isOpenMobile;
 
   const dragStateRef = useRef<{
     active: boolean;
@@ -132,8 +215,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
     samples: [],
   });
 
-  const currentScreen = progressState.currentScreen;
-  const { completedCount, totalTrackableCount, percentage } =
+  // Expand only the newly active lesson when switching screens into a lesson
+  useEffect(() => {
+    if (prevScreenRef.current !== currentScreen) {
+      prevScreenRef.current = currentScreen;
+      if (isLessonId(currentScreen)) {
+        setIsModuleExpanded(true);
+        setExpandedLessons({ [currentScreen]: true });
+      }
+    }
+  }, [currentScreen]);
+
+  const { completedLessonsCount, completedCount, totalTrackableCount, percentage } =
     calculateOverallModuleProgress(progressState);
 
   const stopAnimations = () => {
@@ -152,18 +245,36 @@ export const Sidebar: React.FC<SidebarProps> = ({
     return matrix.m41;
   };
 
-  // Mount & animate mobile drawer symmetrically along the left edge
   useEffect(() => {
     if (isOpenMobile) {
       setIsRenderedMobile(true);
     }
   }, [isOpenMobile]);
 
+  // Keep active section visible when mobile drawer opens
+  useEffect(() => {
+    if (!isOpenMobile || !isRenderedMobile) return;
+    const timer = window.setTimeout(() => {
+      const activeEl = mobileNavRef.current?.querySelector<HTMLElement>('[data-active-nav="true"]');
+      activeEl?.scrollIntoView({ block: 'nearest' });
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, [isOpenMobile, isRenderedMobile]);
+
   useEffect(() => {
     if (!isRenderedMobile) return;
     const drawerEl = drawerRef.current;
     const scrimEl = scrimRef.current;
     if (!drawerEl || !scrimEl) return;
+
+    // Preserve in-flight pointer release spring velocity without overwriting it
+    if (isOpenMobile && gestureSpringInFlightRef.current === 'open') {
+      return;
+    }
+    if (!isOpenMobile && gestureSpringInFlightRef.current === 'close') {
+      return;
+    }
+    gestureSpringInFlightRef.current = null;
 
     const reduced = prefersReducedMotion();
     stopAnimations();
@@ -174,8 +285,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         drawerEl.style.transform = 'translateX(0px)';
         drawerEl.style.opacity = '0';
         scrimEl.style.opacity = '0';
-        animControlsRef.current = animate(drawerEl, { opacity: 1 }, { duration: 0.16 });
-        scrimControlsRef.current = animate(scrimEl, { opacity: 1 }, { duration: 0.16 });
+        animControlsRef.current = animate(drawerEl, { opacity: 1 }, { duration: 0.14 });
+        scrimControlsRef.current = animate(scrimEl, { opacity: 1 }, { duration: 0.14 });
       } else {
         const currentX = getLiveTranslateX();
         const startX = currentX < -1 ? currentX : -width;
@@ -186,50 +297,49 @@ export const Sidebar: React.FC<SidebarProps> = ({
         animControlsRef.current = animate(
           drawerEl,
           { transform: 'translateX(0px)' },
-          { type: 'spring', bounce: 0, duration: 0.34 }
+          { type: 'spring', bounce: 0, duration: 0.3 }
         );
         scrimControlsRef.current = animate(
           scrimEl,
           { opacity: 1 },
-          { duration: 0.24, ease: [0.23, 1, 0.32, 1] }
+          { duration: 0.22, ease: [0.23, 1, 0.32, 1] }
         );
       }
     } else {
       const width = drawerEl.getBoundingClientRect().width || 300;
       if (reduced) {
-        animControlsRef.current = animate(drawerEl, { opacity: 0 }, { duration: 0.14 });
-        const scrimOut = animate(scrimEl, { opacity: 0 }, { duration: 0.14 });
+        animControlsRef.current = animate(drawerEl, { opacity: 0 }, { duration: 0.12 });
+        const scrimOut = animate(scrimEl, { opacity: 0 }, { duration: 0.12 });
         scrimControlsRef.current = scrimOut;
         scrimOut.finished.then(() => {
-          setIsRenderedMobile(false);
+          if (!isOpenMobileRef.current) setIsRenderedMobile(false);
         });
       } else {
-        // Exit slightly faster than enter (Emil: asymmetric enter/exit timing)
-        animControlsRef.current = animate(
+        const exitAnim = animate(
           drawerEl,
           { transform: `translateX(${-width}px)` },
-          { duration: 0.22, ease: [0.23, 1, 0.32, 1] }
+          { duration: 0.2, ease: [0.32, 0.72, 0, 1] }
         );
+        animControlsRef.current = exitAnim;
         scrimControlsRef.current = animate(
           scrimEl,
           { opacity: 0 },
-          { duration: 0.2, ease: [0.23, 1, 0.32, 1] }
+          { duration: 0.18, ease: [0.23, 1, 0.32, 1] }
         );
-        animControlsRef.current &&
-          (animControlsRef.current as { finished?: Promise<unknown> }).finished?.then(() => {
-            if (!isOpenMobile) {
-              setIsRenderedMobile(false);
-            }
-          });
+        (exitAnim as { finished?: Promise<unknown> }).finished?.then(() => {
+          if (!isOpenMobileRef.current && !dragStateRef.current.active) {
+            setIsRenderedMobile(false);
+          }
+        });
       }
     }
   }, [isOpenMobile, isRenderedMobile]);
 
-  // Escape key closes mobile drawer
   useEffect(() => {
     if (!isOpenMobile) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        gestureSpringInFlightRef.current = null;
         onCloseMobile();
       }
     };
@@ -238,15 +348,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
   }, [isOpenMobile, onCloseMobile]);
 
   const handleDrawerPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    // Allow interactive controls inside to handle taps normally unless user drags horizontally
     if (e.button !== 0 && e.pointerType === 'mouse') return;
     if (prefersReducedMotion()) return;
     const drawerEl = drawerRef.current;
     if (!drawerEl) return;
-
-    // Multi-touch protection
     if (dragStateRef.current.active) return;
 
+    gestureSpringInFlightRef.current = null;
     const liveX = getLiveTranslateX();
     stopAnimations();
 
@@ -272,11 +380,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const dx = e.clientX - drag.startX;
     const dy = e.clientY - drag.startY;
 
-    // 10px gesture disambiguation hysteresis
     if (!drag.lockedAxis) {
       if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
       if (Math.abs(dy) > Math.abs(dx)) {
-        // Vertical scroll inside nav list — cancel horizontal drawer drag
         drag.active = false;
         drag.pointerId = null;
         return;
@@ -291,14 +397,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
     const width = drawerEl.getBoundingClientRect().width || 300;
     const rawOffset = drag.initialOffsetX + dx;
-    // Progressive rubber-banding if pulled past open edge (rightward > 0)
-    const offset = rawOffset > 0 ? rubberband(rawOffset, width * 0.45, 0.55) : Math.max(-width, rawOffset);
+    const offset =
+      rawOffset > 0 ? rubberband(rawOffset, width * 0.45, 0.55) : Math.max(-width, rawOffset);
 
     drag.currentOffsetX = offset;
     drag.samples.push({ x: e.clientX, y: e.clientY, time: performance.now() });
     if (drag.samples.length > 8) drag.samples.shift();
 
-    // Update transform directly on element (avoid CSS variable recalc across children)
     drawerEl.style.transform = `translateX(${offset}px)`;
     scrimEl.style.opacity = String(Math.max(0, Math.min(1, 1 + offset / width)));
   };
@@ -326,35 +431,88 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
     const width = drawerEl.getBoundingClientRect().width || 300;
     const { vx } = computePointerVelocity(drag.samples);
-    // Apple momentum projection to decide commit (close) vs snap back (open)
     const projectedX = drag.currentOffsetX + projectMomentum(vx, 0.99);
     const shouldClose = projectedX < -width * 0.42 || vx < -450;
 
     if (shouldClose) {
-      animControlsRef.current = animate(
+      gestureSpringInFlightRef.current = 'close';
+      const closeAnim = animate(
         drawerEl,
         { transform: `translateX(${-width}px)` },
-        { type: 'spring', bounce: 0, duration: 0.28, velocity: vx }
+        { type: 'spring', bounce: 0, duration: 0.26, velocity: vx }
       );
-      scrimControlsRef.current = animate(scrimEl, { opacity: 0 }, { duration: 0.2 });
+      animControlsRef.current = closeAnim;
+      scrimControlsRef.current = animate(
+        scrimEl,
+        { opacity: 0 },
+        { duration: 0.18, ease: [0.23, 1, 0.32, 1] }
+      );
+      (closeAnim as { finished?: Promise<unknown> }).finished?.then(() => {
+        if (gestureSpringInFlightRef.current === 'close') {
+          gestureSpringInFlightRef.current = null;
+        }
+        if (!isOpenMobileRef.current && !dragStateRef.current.active) {
+          setIsRenderedMobile(false);
+        }
+      });
       onCloseMobile();
     } else {
-      animControlsRef.current = animate(
+      gestureSpringInFlightRef.current = 'open';
+      const openAnim = animate(
         drawerEl,
         { transform: 'translateX(0px)' },
-        { type: 'spring', bounce: 0, duration: 0.32, velocity: vx }
+        { type: 'spring', bounce: 0, duration: 0.3, velocity: vx }
       );
-      scrimControlsRef.current = animate(scrimEl, { opacity: 1 }, { duration: 0.2 });
+      animControlsRef.current = openAnim;
+      scrimControlsRef.current = animate(
+        scrimEl,
+        { opacity: 1 },
+        { duration: 0.18, ease: [0.23, 1, 0.32, 1] }
+      );
+      (openAnim as { finished?: Promise<unknown> }).finished?.then(() => {
+        if (gestureSpringInFlightRef.current === 'open') {
+          gestureSpringInFlightRef.current = null;
+        }
+      });
+      if (!isOpenMobileRef.current) {
+        onOpenMobile();
+      }
     }
   };
 
-  const handleSelect = (id: ScreenId, isLocked: boolean) => {
+  const handleSelectScreen = (id: ScreenId, isLocked: boolean) => {
     if (isLocked) {
       onLockedAttempt(id);
       return;
     }
+    if (isLessonId(id)) {
+      setIsModuleExpanded(true);
+      setExpandedLessons((prev) => (prev[id] ? prev : { [id]: true }));
+    }
     onNavigate(id);
     onCloseMobile();
+  };
+
+  const handleSelectSection = (
+    lessonId: LessonId,
+    section: LessonSectionNavItem,
+    isLocked: boolean
+  ) => {
+    if (isLocked) {
+      onLockedAttempt(lessonId);
+      return;
+    }
+    setIsModuleExpanded(true);
+    setExpandedLessons((prev) => ({ ...prev, [lessonId]: true }));
+    onNavigateSection(lessonId, section.id, `${section.number} ${section.title}`);
+    onCloseMobile();
+  };
+
+  const toggleLessonExpanded = (lessonId: LessonId) => {
+    setExpandedLessons((prev) => ({
+      ...prev,
+      [lessonId]: !prev[lessonId],
+    }));
   };
 
   const handleConfirmReset = () => {
@@ -363,16 +521,256 @@ export const Sidebar: React.FC<SidebarProps> = ({
     onCloseMobile();
   };
 
-  const sidebarContent = (
+  const isSectionCompleted = (lessonId: LessonId, section: LessonSectionNavItem): boolean => {
+    const record = progressState.lessons[lessonId];
+    if (!record.unlocked) return false;
+    if (section.kind === 'activity' && section.activityId) {
+      return record.activities[section.activityId] === true;
+    }
+    if (section.kind === 'assessment') {
+      return Boolean(record.assessment.passed);
+    }
+    if (record.completed) return true;
+    return Boolean(progressState.visitedSectionIds?.[lessonId]?.includes(section.id));
+  };
+
+  const renderTopLevelItem = (id: 'welcome' | 'assessment' | 'completion') => {
+    const item = LESSON_NAV_ITEMS.find((nav) => nav.id === id);
+    if (!item) return null;
+
+    const isCurrent = currentScreen === item.id;
+    const isUnlocked = canAccessScreen(progressState, item.id);
+    const isLocked = !isUnlocked;
+
+    let itemPct = 0;
+    let itemCompleted = false;
+    if (item.id === 'welcome') {
+      itemCompleted = currentScreen !== 'welcome' || completedCount > 0;
+      itemPct = itemCompleted ? 100 : 0;
+    } else if (item.id === 'assessment') {
+      itemCompleted = progressState.finalAssessmentPassed;
+      itemPct = itemCompleted ? 100 : 0;
+    } else if (item.id === 'completion') {
+      itemCompleted = progressState.moduleCompleted;
+      itemPct = itemCompleted ? 100 : 0;
+    }
+
+    const statusLabel = isLocked
+      ? 'Locked'
+      : itemCompleted
+      ? 'Completed'
+      : item.id === 'welcome'
+      ? 'Overview'
+      : `${itemPct}%`;
+
+    const lockHint = item.id === 'completion' ? LOCKED_COMPLETION_MESSAGE : LOCKED_LESSON_MESSAGE;
+    const buttonAriaLabel = isLocked
+      ? `${item.title} — Locked. ${lockHint}`
+      : `${item.title} — ${statusLabel}`;
+
+    return (
+      <li key={item.id}>
+        <button
+          type="button"
+          onClick={() => handleSelectScreen(item.id, isLocked)}
+          aria-current={isCurrent ? 'page' : undefined}
+          aria-disabled={isLocked ? 'true' : undefined}
+          aria-label={buttonAriaLabel}
+          data-active-nav={isCurrent ? 'true' : undefined}
+          data-screen-id={item.id}
+          data-locked={isLocked ? 'true' : 'false'}
+          data-progress-percent={itemPct}
+          className={`group w-full text-left flex items-center gap-3 rounded-md px-3 py-2.5 min-h-[44px] border transition-colors duration-150 ${
+            isLocked
+              ? 'border-transparent bg-slate-100/70 text-[#475569] cursor-not-allowed'
+              : isCurrent
+              ? 'tactile-press bg-[#EFF6FF] text-[#172033] border-[#BFDBFE] shadow-[0_1px_2px_rgba(37,99,235,0.08)]'
+              : 'tactile-press text-[#334155] border-transparent hover:bg-white hover:border-[#E2E8F0]'
+          }`}
+        >
+          <LessonProgressRing
+            percentage={itemPct}
+            isCompleted={itemCompleted}
+            isLocked={isLocked}
+            isCurrent={isCurrent}
+            label={item.title}
+          />
+          <span className="min-w-0 flex-1">
+            <span className="block text-xs text-[#475569] tracking-[0.008em]">
+              {item.shortLabel} · {item.duration} · {statusLabel}
+            </span>
+            <span
+              className={`mt-0.5 block text-sm leading-snug ${
+                isLocked
+                  ? 'font-medium text-[#475569]'
+                  : isCurrent
+                  ? 'font-semibold text-[#1E3A8A]'
+                  : 'font-medium text-[#172033]'
+              }`}
+            >
+              {item.title}
+            </span>
+          </span>
+        </button>
+      </li>
+    );
+  };
+
+  const renderLessonAccordion = (lessonId: LessonId) => {
+    const item = LESSON_NAV_ITEMS.find((nav) => nav.id === lessonId);
+    if (!item) return null;
+
+    const isCurrent = currentScreen === lessonId;
+    const isUnlocked = canAccessScreen(progressState, lessonId);
+    const isLocked = !isUnlocked;
+    const summary = calculateLessonProgress(lessonId, progressState.lessons[lessonId]);
+    const isExpanded = Boolean(expandedLessons[lessonId]);
+    const sections = LESSON_SECTIONS[lessonId];
+
+    const statusLabel = isLocked
+      ? 'Locked'
+      : summary.completed
+      ? 'Completed'
+      : `${summary.percentage}%`;
+
+    const displayNumber = item.lessonNumber ?? item.shortLabel;
+    const buttonAriaLabel = isLocked
+      ? `${displayNumber} ${item.title} — Locked. ${LOCKED_LESSON_MESSAGE}`
+      : `${displayNumber} ${item.title} — ${summary.percentage}% complete`;
+
+    return (
+      <li key={lessonId}>
+        <div>
+          {/* Level 2 Header: Two sibling buttons (navigate + toggle chevron) */}
+          <div
+            className={`flex items-stretch gap-0.5 rounded-md border transition-colors duration-150 ${
+              isLocked
+                ? 'border-transparent bg-slate-100/70'
+                : isCurrent
+                ? 'border-[#BFDBFE] bg-[#EFF6FF] shadow-[0_1px_2px_rgba(37,99,235,0.06)]'
+                : 'border-transparent hover:bg-white hover:border-[#E2E8F0]'
+            }`}
+          >
+            <button
+              type="button"
+              onClick={() => handleSelectScreen(lessonId, isLocked)}
+              aria-current={isCurrent ? 'page' : undefined}
+              aria-disabled={isLocked ? 'true' : undefined}
+              aria-label={buttonAriaLabel}
+              data-screen-id={lessonId}
+              data-locked={isLocked ? 'true' : 'false'}
+              data-progress-percent={summary.percentage}
+              data-active-nav={isCurrent && (!isExpanded || !activeSectionId) ? 'true' : undefined}
+              className={`min-w-0 flex-1 text-left flex items-center gap-2.5 rounded-l-md pl-2.5 pr-1.5 py-2 min-h-[44px] ${
+                isLocked ? 'cursor-not-allowed text-[#475569]' : 'tactile-press text-[#172033]'
+              }`}
+            >
+              <LessonProgressRing
+                percentage={summary.percentage}
+                isCompleted={summary.completed}
+                isLocked={isLocked}
+                isCurrent={isCurrent}
+                label={`${displayNumber} ${item.title}`}
+              />
+              <span className="min-w-0 flex-1">
+                <span className="block text-[11px] font-medium text-[#475569] tabular-nums">
+                  {displayNumber} · {item.duration} · {statusLabel}
+                </span>
+                <span
+                  className={`mt-0.5 block text-[13.5px] leading-snug ${
+                    isLocked
+                      ? 'font-medium text-[#475569]'
+                      : isCurrent
+                      ? 'font-semibold text-[#1E3A8A]'
+                      : 'font-medium text-[#172033]'
+                  }`}
+                >
+                  {item.title}
+                </span>
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => toggleLessonExpanded(lessonId)}
+              aria-expanded={isExpanded}
+              aria-controls={`sections-${lessonId}`}
+              aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${displayNumber} ${item.title} sections`}
+              data-testid={`toggle-${lessonId}`}
+              className="tactile-press inline-flex items-center justify-center rounded-r-md px-2 text-[#475569] hover:text-[#172033] hover:bg-slate-200/50 min-w-[36px] min-h-[44px]"
+            >
+              <ChevronDown
+                className={`h-4 w-4 transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] ${
+                  isExpanded ? 'rotate-180' : ''
+                }`}
+                aria-hidden="true"
+              />
+            </button>
+          </div>
+
+          {/* Level 3: Nested Lesson Sections */}
+          {isExpanded && (
+            <ul
+              id={`sections-${lessonId}`}
+              aria-label={`${displayNumber} ${item.title} sections`}
+              className="accordion-reveal ml-[22px] mt-1 mb-1.5 border-l border-[#CBD5E1] pl-3 space-y-0.5"
+            >
+              {sections.map((section) => {
+                const isSecActive = isCurrent && activeSectionId === section.id;
+                const isSecDone = isSectionCompleted(lessonId, section);
+
+                return (
+                  <li key={section.id}>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectSection(lessonId, section, isLocked)}
+                      aria-current={isSecActive ? 'location' : undefined}
+                      aria-disabled={isLocked ? 'true' : undefined}
+                      data-section-nav-id={section.id}
+                      data-section-completed={isSecDone ? 'true' : 'false'}
+                      data-active-nav={isSecActive ? 'true' : undefined}
+                      className={`w-full text-left flex items-start gap-2 rounded-md px-2 py-1.5 min-h-[38px] text-xs transition-colors duration-150 ${
+                        isLocked
+                          ? 'text-[#64748B] cursor-not-allowed'
+                          : isSecActive
+                          ? 'tactile-press bg-white text-[#1E3A8A] font-semibold shadow-[0_1px_2px_rgba(15,23,42,0.06)]'
+                          : 'tactile-press text-[#334155] hover:bg-white/80 hover:text-[#172033]'
+                      }`}
+                    >
+                      <span className="mt-[1px] shrink-0">
+                        <SectionStatusIndicator
+                          isLocked={isLocked}
+                          isCompleted={isSecDone}
+                          isActive={isSecActive}
+                        />
+                      </span>
+                      <span className="min-w-0 flex-1 flex items-start gap-1.5 leading-snug">
+                        <span className="font-mono text-[11px] text-[#64748B] tabular-nums shrink-0 mt-[1px]">
+                          {section.number}
+                        </span>
+                        <span>{section.title}</span>
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </li>
+    );
+  };
+
+  const renderSidebarBody = (navRef: React.RefObject<HTMLElement | null>) => (
     <div className="flex h-full flex-col bg-[#F5F7FA] border-r border-[#E2E8F0] text-[#172033]">
       {/* Course & Module Identity */}
-      <div className="px-5 pt-6 pb-5 border-b border-[#E2E8F0]">
+      <div className="px-5 pt-5 pb-4 border-b border-[#E2E8F0]">
         <div className="flex items-start justify-between gap-2">
           <div>
             <p className="text-xs font-medium text-[#475569] tracking-[0.01em]">
               {COURSE_INFO.courseTitle}
             </p>
-            <h2 className="mt-1.5 text-base font-semibold leading-snug text-[#172033]">
+            <h2 className="mt-1 text-base font-semibold leading-snug text-[#172033]">
               {COURSE_INFO.moduleLabel}: {COURSE_INFO.moduleTitle}
             </h2>
           </div>
@@ -387,7 +785,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Overall Progress (GPU-composited scaleX) */}
-        <div className="mt-5">
+        <div className="mt-4">
           <div className="flex items-baseline justify-between text-xs">
             <span className="font-medium text-[#475569]">Module Progress</span>
             <span className="font-mono font-medium text-[#172033] tabular-nums">
@@ -395,7 +793,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </span>
           </div>
           <div
-            className="mt-2 h-2 w-full overflow-hidden rounded-sm bg-[#E2E8F0]"
+            className="mt-1.5 h-2 w-full overflow-hidden rounded-sm bg-[#E2E8F0]"
             role="progressbar"
             aria-valuenow={percentage}
             aria-valuemin={0}
@@ -410,8 +808,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      {/* Lesson Navigation List */}
-      <nav aria-label="Module lessons" className="flex-1 overflow-y-auto px-3 py-4">
+      {/* 3-Level Nested Course Navigation */}
+      <nav
+        ref={navRef}
+        aria-label="Course outline and lessons"
+        className="nav-scroll-fade flex-1 overflow-y-auto px-3 py-3.5"
+      >
         {lockNotice && (
           <div
             role="status"
@@ -423,99 +825,56 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
         )}
 
-        <ul className="space-y-1">
-          {LESSON_NAV_ITEMS.map((item) => {
-            const isCurrent = currentScreen === item.id;
-            const isUnlocked = canAccessScreen(progressState, item.id);
-            const isLocked = !isUnlocked;
+        <ul className="space-y-1.5">
+          {/* Level 1: Course Orientation */}
+          {renderTopLevelItem('welcome')}
 
-            let itemPct = 0;
-            let itemCompleted = false;
-            if (item.id === 'welcome') {
-              itemCompleted = currentScreen !== 'welcome' || completedCount > 0;
-              itemPct = itemCompleted ? 100 : 0;
-            } else if (isLessonId(item.id)) {
-              const summary = calculateLessonProgress(item.id, progressState.lessons[item.id]);
-              itemPct = summary.percentage;
-              itemCompleted = summary.completed;
-            } else if (item.id === 'assessment') {
-              itemCompleted = progressState.finalAssessmentPassed;
-              itemPct = itemCompleted ? 100 : 0;
-            } else if (item.id === 'completion') {
-              itemCompleted = progressState.moduleCompleted;
-              itemPct = itemCompleted ? 100 : 0;
-            }
+          {/* Level 1: Expandable Module 1 Group */}
+          <li className="pt-1.5 border-t border-[#E2E8F0]">
+            <button
+              type="button"
+              onClick={() => setIsModuleExpanded((prev) => !prev)}
+              aria-expanded={isModuleExpanded}
+              aria-controls="module-1-lessons"
+              data-testid="toggle-module-1"
+              className="tactile-press w-full text-left flex items-center justify-between gap-2 rounded-md px-3 py-2 min-h-[44px] hover:bg-white/80"
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block text-[11px] font-medium text-[#475569] tabular-nums">
+                  {completedLessonsCount}/5 lessons · 2 hrs
+                </span>
+                <span className="mt-0.5 block text-sm font-semibold text-[#172033] leading-snug">
+                  Module 1: Forces and Motion
+                </span>
+              </span>
+              <ChevronDown
+                className={`h-4 w-4 shrink-0 text-[#475569] transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] ${
+                  isModuleExpanded ? 'rotate-180' : ''
+                }`}
+                aria-hidden="true"
+              />
+            </button>
 
-            const statusLabel = isLocked
-              ? 'Locked'
-              : itemCompleted
-              ? 'Completed'
-              : item.id === 'welcome'
-              ? 'Overview'
-              : `${itemPct}%`;
+            {isModuleExpanded && (
+              <ul
+                id="module-1-lessons"
+                aria-label="Module 1 lessons"
+                className="accordion-reveal mt-1.5 space-y-1"
+              >
+                {LESSON_IDS.map((lessonId) => renderLessonAccordion(lessonId))}
+              </ul>
+            )}
+          </li>
 
-            const lockHint =
-              item.id === 'completion' ? LOCKED_COMPLETION_MESSAGE : LOCKED_LESSON_MESSAGE;
-            const buttonAriaLabel = isLocked
-              ? `${item.shortLabel}: ${item.title} — Locked. ${lockHint}`
-              : `${item.shortLabel}: ${item.title} — ${item.shortLabel} progress: ${itemPct}%`;
-
-            return (
-              <li key={item.id}>
-                <button
-                  type="button"
-                  onClick={() => handleSelect(item.id, isLocked)}
-                  aria-current={isCurrent ? 'page' : undefined}
-                  aria-disabled={isLocked ? 'true' : undefined}
-                  tabIndex={isLocked ? -1 : 0}
-                  aria-label={buttonAriaLabel}
-                  data-screen-id={item.id}
-                  data-locked={isLocked ? 'true' : 'false'}
-                  data-progress-percent={itemPct}
-                  className={`group w-full text-left flex items-center gap-3 rounded-md px-3 py-2.5 min-h-[44px] border transition-colors duration-150 ${
-                    isLocked
-                      ? 'border-transparent bg-slate-100/70 text-[#475569] cursor-not-allowed'
-                      : isCurrent
-                      ? 'tactile-press bg-[#EFF6FF] text-[#172033] border-[#BFDBFE] shadow-[0_1px_2px_rgba(37,99,235,0.08)]'
-                      : 'tactile-press text-[#334155] border-transparent hover:bg-white hover:border-[#E2E8F0]'
-                  }`}
-                >
-                  <LessonProgressRing
-                    percentage={itemPct}
-                    isCompleted={itemCompleted}
-                    isLocked={isLocked}
-                    isCurrent={isCurrent}
-                    label={item.shortLabel}
-                  />
-                  <span className="min-w-0 flex-1">
-                    <span
-                      className={`block text-xs tracking-[0.008em] ${
-                        isLocked ? 'text-[#475569]' : 'text-[#475569]'
-                      }`}
-                    >
-                      {item.shortLabel} · {item.duration} · {statusLabel}
-                    </span>
-                    <span
-                      className={`mt-0.5 block text-sm leading-snug ${
-                        isLocked
-                          ? 'font-medium text-[#475569]'
-                          : isCurrent
-                          ? 'font-semibold text-[#1E3A8A]'
-                          : 'font-medium text-[#172033]'
-                      }`}
-                    >
-                      {item.title}
-                    </span>
-                  </span>
-                </button>
-              </li>
-            );
-          })}
+          {/* Level 1: Final Module Assessment & Completion Summary */}
+          <li className="pt-1 border-t border-[#E2E8F0] list-none" aria-hidden="true" />
+          {renderTopLevelItem('assessment')}
+          {renderTopLevelItem('completion')}
         </ul>
       </nav>
 
       {/* Footer Utility: Reference Library & Safe Progress Reset */}
-      <div className="border-t border-[#E2E8F0] px-4 py-4 space-y-2.5">
+      <div className="border-t border-[#E2E8F0] px-4 py-3.5 space-y-2">
         <button
           type="button"
           onClick={() => {
@@ -573,9 +932,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Desktop persistent sidebar */}
       <aside
         aria-label="Course navigation"
-        className="hidden lg:block lg:w-[296px] lg:shrink-0 lg:sticky lg:top-0 lg:h-screen"
+        className="hidden lg:block lg:w-[308px] lg:shrink-0 lg:sticky lg:top-0 lg:h-screen"
       >
-        {sidebarContent}
+        {renderSidebarBody(desktopNavRef)}
       </aside>
 
       {/* Mobile slide-over drawer with 1:1 pointer tracking, momentum projection & symmetric exit */}
@@ -598,9 +957,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
             onPointerMove={handleDrawerPointerMove}
             onPointerUp={handleDrawerPointerEnd}
             onPointerCancel={handleDrawerPointerEnd}
-            className="relative z-10 w-[86vw] max-w-[320px] h-full shadow-2xl touch-pan-y"
+            className="relative z-10 w-[86vw] max-w-[330px] h-full shadow-2xl touch-pan-y"
           >
-            {sidebarContent}
+            {renderSidebarBody(mobileNavRef)}
           </div>
         </div>
       )}

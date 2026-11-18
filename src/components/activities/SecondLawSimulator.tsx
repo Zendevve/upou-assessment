@@ -366,6 +366,14 @@ export const SecondLawSimulator: React.FC<SecondLawSimulatorProps> = ({
                   transition: isDraggingCart || isPlaying ? 'none' : 'transform 220ms cubic-bezier(0.23, 1, 0.32, 1)',
                 }}
               >
+                {/* Generous touch hit-target (>= 58px SVG units) */}
+                <rect
+                  x={boxX - 10}
+                  y={boxY - 10}
+                  width={boxSize + 20}
+                  height={boxSize + 20}
+                  fill="transparent"
+                />
                 <rect
                   x={boxX}
                   y={boxY}

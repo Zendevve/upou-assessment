@@ -128,16 +128,31 @@ export const ActionReactionActivity: React.FC<ActionReactionActivityProps> = ({
       </div>
 
       {/* Scenario Tabs */}
-      <div className="mt-4 flex flex-wrap gap-2" role="tablist" aria-label="Third law scenarios">
+      <div
+        className="mt-4 flex flex-wrap gap-2"
+        role="tablist"
+        aria-label="Third law scenarios"
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            setActiveIndex((prev) => (prev + 1) % THIRD_LAW_SCENARIOS.length);
+          } else if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            setActiveIndex((prev) => (prev - 1 + THIRD_LAW_SCENARIOS.length) % THIRD_LAW_SCENARIOS.length);
+          }
+        }}
+      >
         {THIRD_LAW_SCENARIOS.map((item, idx) => {
           const isActive = idx === activeIndex;
           const isDone = selections[item.id]?.passed;
           return (
             <button
               key={item.id}
+              id={`tab-${item.id}`}
               type="button"
               role="tab"
               aria-selected={isActive}
+              aria-controls={`panel-${item.id}`}
               onClick={() => setActiveIndex(idx)}
               className={`tactile-press inline-flex items-center gap-1.5 rounded-md border px-3.5 py-2 text-xs sm:text-sm font-medium min-h-[40px] ${
                 isActive
@@ -153,7 +168,13 @@ export const ActionReactionActivity: React.FC<ActionReactionActivityProps> = ({
       </div>
 
       {/* Scenario Prompt + Diagram */}
-      <div key={scenario.id} className="surface-enter mt-5 grid gap-5 lg:grid-cols-[1fr_1.15fr]">
+      <div
+        key={scenario.id}
+        id={`panel-${scenario.id}`}
+        role="tabpanel"
+        aria-labelledby={`tab-${scenario.id}`}
+        className="surface-enter mt-5 grid gap-5 lg:grid-cols-[1fr_1.15fr]"
+      >
         <div>
           <p className="text-sm sm:text-base font-medium text-[#172033]">{scenario.context}</p>
           <div className="mt-3">

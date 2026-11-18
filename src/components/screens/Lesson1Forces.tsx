@@ -50,13 +50,17 @@ export const Lesson1Forces: React.FC<LessonProps> = ({
         isCompleted={lessonRecord.completed}
       />
 
-      <LessonIntro intro={LESSON_INTROS['lesson-1']} />
+      <LessonIntro
+        intro={LESSON_INTROS['lesson-1']}
+        sectionId="l1-intro"
+        sectionLabel="1.1.1 Introduction & Objectives"
+      />
 
       <section
         id="l1-what-is-force"
         data-section-id="l1-what-is-force"
-        data-section-label="1. What Is a Force?"
-        className="mt-8 space-y-4 text-sm sm:text-base text-[#334155]"
+        data-section-label="1.1.2 What Is a Force?"
+        className="mt-8 scroll-mt-20 lg:scroll-mt-6 space-y-4 text-sm sm:text-base text-[#334155]"
       >
         <h2 className="text-xl font-semibold text-[#172033]">1. What Is a Force?</h2>
         <p>
@@ -95,8 +99,8 @@ export const Lesson1Forces: React.FC<LessonProps> = ({
       <section
         id="l1-combining-forces"
         data-section-id="l1-combining-forces"
-        data-section-label="2. Combining Forces"
-        className="mt-8 space-y-4 text-sm sm:text-base text-[#334155]"
+        data-section-label="1.1.3 Balanced & Unbalanced Forces"
+        className="mt-8 scroll-mt-20 lg:scroll-mt-6 space-y-4 text-sm sm:text-base text-[#334155]"
       >
         <h2 className="text-xl font-semibold text-[#172033]">
           2. Combining Forces: Balanced vs. Unbalanced
@@ -134,8 +138,8 @@ export const Lesson1Forces: React.FC<LessonProps> = ({
       <section
         id="l1-practice"
         data-section-id="l1-practice"
-        data-section-label="3. Net Force Practice"
-        className="mt-8"
+        data-section-label="1.1.4 Activity: Net Force Calculator"
+        className="mt-8 scroll-mt-20 lg:scroll-mt-6"
       >
         <h2 className="text-xl font-semibold text-[#172033]">
           3. Practice: Build and Combine Horizontal Forces
@@ -152,6 +156,8 @@ export const Lesson1Forces: React.FC<LessonProps> = ({
 
       <KnowledgeCheck
         id="lesson-1-kc"
+        sectionId="l1-kc"
+        sectionLabel="1.1.5 Quick Knowledge Check"
         title="Lesson 1 Knowledge Check"
         question="A heavy crate sits on a smooth floor. One student pushes with 12 N to the right while another pushes with 12 N to the left. What is the net force on the crate, and are the forces balanced?"
         options={[
@@ -185,12 +191,15 @@ export const Lesson1Forces: React.FC<LessonProps> = ({
         lessonLabel="Lesson 1"
         summary={LESSON_SUMMARIES['lesson-1']}
         onOpenReference={onOpenReference}
+        sectionId="l1-summary"
+        sectionLabel="1.1.6 Lesson Summary"
       />
 
       <section
         id="l1-assessment"
         data-section-id="l1-assessment"
-        data-section-label="Lesson 1 Mastery Assessment"
+        data-section-label="1.1.7 Lesson 1 Assessment"
+        className="scroll-mt-20 lg:scroll-mt-6"
       >
         <LessonAssessment
           lessonId="lesson-1"

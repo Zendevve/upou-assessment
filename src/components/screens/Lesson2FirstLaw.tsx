@@ -48,13 +48,17 @@ export const Lesson2FirstLaw: React.FC<LessonProps> = ({
         isCompleted={lessonRecord.completed}
       />
 
-      <LessonIntro intro={LESSON_INTROS['lesson-2']} />
+      <LessonIntro
+        intro={LESSON_INTROS['lesson-2']}
+        sectionId="l2-intro"
+        sectionLabel="1.2.1 Introduction & Objectives"
+      />
 
       <section
         id="l2-first-law"
         data-section-id="l2-first-law"
-        data-section-label="1. Newton's First Law"
-        className="mt-8 space-y-4 text-sm sm:text-base text-[#334155]"
+        data-section-label="1.2.2 Newton's First Law"
+        className="mt-8 scroll-mt-20 lg:scroll-mt-6 space-y-4 text-sm sm:text-base text-[#334155]"
       >
         <h2 className="text-xl font-semibold text-[#172033]">
           1. Newton’s First Law of Motion
@@ -99,8 +103,8 @@ export const Lesson2FirstLaw: React.FC<LessonProps> = ({
       <section
         id="l2-inertia-mass"
         data-section-id="l2-inertia-mass"
-        data-section-label="2. Inertia and Mass"
-        className="mt-8 space-y-4 text-sm sm:text-base text-[#334155]"
+        data-section-label="1.2.3 Inertia and Mass"
+        className="mt-8 scroll-mt-20 lg:scroll-mt-6 space-y-4 text-sm sm:text-base text-[#334155]"
       >
         <h2 className="text-xl font-semibold text-[#172033]">
           2. Inertia and Its Relationship with Mass
@@ -121,8 +125,8 @@ export const Lesson2FirstLaw: React.FC<LessonProps> = ({
       <section
         id="l2-bus-scenario"
         data-section-id="l2-bus-scenario"
-        data-section-label="3. Braking Bus Scenario"
-        className="mt-8"
+        data-section-label="1.2.4 Activity: The Braking Bus"
+        className="mt-8 scroll-mt-20 lg:scroll-mt-6"
       >
         <h2 className="text-xl font-semibold text-[#172033]">
           3. Interactive Scenario: Why Do Passengers Lurch Forward?
@@ -139,6 +143,8 @@ export const Lesson2FirstLaw: React.FC<LessonProps> = ({
 
       <KnowledgeCheck
         id="lesson-2-kc"
+        sectionId="l2-kc"
+        sectionLabel="1.2.5 Quick Knowledge Check"
         title="Lesson 2 Knowledge Check"
         question="A bowling ball (7 kg) and a tennis ball (0.06 kg) sit side by side at rest on a flat floor. Which statement about their inertia is correct?"
         options={[
@@ -172,12 +178,15 @@ export const Lesson2FirstLaw: React.FC<LessonProps> = ({
         lessonLabel="Lesson 2"
         summary={LESSON_SUMMARIES['lesson-2']}
         onOpenReference={onOpenReference}
+        sectionId="l2-summary"
+        sectionLabel="1.2.6 Lesson Summary"
       />
 
       <section
         id="l2-assessment"
         data-section-id="l2-assessment"
-        data-section-label="Lesson 2 Mastery Assessment"
+        data-section-label="1.2.7 Lesson 2 Assessment"
+        className="scroll-mt-20 lg:scroll-mt-6"
       >
         <LessonAssessment
           lessonId="lesson-2"

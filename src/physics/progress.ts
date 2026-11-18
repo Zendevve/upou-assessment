@@ -109,6 +109,7 @@ export interface ModuleProgressState {
   currentScreen: ScreenId;
   lastActiveLesson: LessonId | null;
   lastVisitedSections: Partial<Record<ScreenId, SectionBookmark>>;
+  visitedSectionIds: Partial<Record<LessonId, string[]>>;
   lessons: Record<LessonId, LessonProgressRecord>;
   finalAssessmentUnlocked: boolean;
   finalAssessmentCompleted: boolean;
@@ -160,6 +161,7 @@ export function createInitialModuleProgress(): ModuleProgressState {
     currentScreen: 'welcome',
     lastActiveLesson: null,
     lastVisitedSections: {},
+    visitedSectionIds: {},
     lessons: {
       'lesson-1': createEmptyLessonRecord(true),
       'lesson-2': createEmptyLessonRecord(false),
@@ -302,11 +304,27 @@ export function reconcileModuleProgress(state: ModuleProgressState): ModuleProgr
       ? state.lastActiveLesson
       : null;
 
+  const safeVisitedSectionIds: Partial<Record<LessonId, string[]>> = {};
+  if (state.visitedSectionIds && typeof state.visitedSectionIds === 'object') {
+    for (const id of LESSON_IDS) {
+      const list = state.visitedSectionIds[id];
+      if (Array.isArray(list) && nextLessons[id]?.unlocked) {
+        const unique = Array.from(
+          new Set(list.filter((sec): sec is string => typeof sec === 'string' && sec.trim().length > 0))
+        );
+        if (unique.length > 0) {
+          safeVisitedSectionIds[id] = unique;
+        }
+      }
+    }
+  }
+
   const candidate: ModuleProgressState = {
     version: 3,
     currentScreen: state.currentScreen,
     lastActiveLesson: safeLastActiveLesson,
     lastVisitedSections: state.lastVisitedSections ?? {},
+    visitedSectionIds: safeVisitedSectionIds,
     lessons: nextLessons,
     finalAssessmentUnlocked,
     finalAssessmentCompleted,
@@ -440,9 +458,25 @@ export function recordSectionVisit(
     return state;
   }
   const existing = state.lastVisitedSections[screenId];
-  if (existing?.sectionId === sectionId && existing?.sectionLabel === sectionLabel) {
+  const prevVisited = isLessonId(screenId) ? state.visitedSectionIds?.[screenId] ?? [] : [];
+  const alreadyRecordedInList = !isLessonId(screenId) || prevVisited.includes(sectionId);
+
+  if (
+    existing?.sectionId === sectionId &&
+    existing?.sectionLabel === sectionLabel &&
+    alreadyRecordedInList
+  ) {
     return state;
   }
+
+  const nextVisitedSectionIds =
+    isLessonId(screenId) && !alreadyRecordedInList
+      ? {
+          ...state.visitedSectionIds,
+          [screenId]: [...prevVisited, sectionId],
+        }
+      : state.visitedSectionIds;
+
   return {
     ...state,
     lastActiveLesson: isLessonId(screenId) ? screenId : state.lastActiveLesson,
@@ -454,6 +488,7 @@ export function recordSectionVisit(
         updatedAt: new Date().toISOString(),
       },
     },
+    visitedSectionIds: nextVisitedSectionIds,
   };
 }
 

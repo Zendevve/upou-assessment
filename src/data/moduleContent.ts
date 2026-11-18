@@ -1,11 +1,23 @@
 import { AssessmentQuestionSpec, ScreenId } from '../physics/calculations';
+import type { LessonId } from '../physics/progress';
 
 export interface LessonNavItem {
   id: ScreenId;
+  lessonNumber?: string;
   shortLabel: string;
   title: string;
   duration: string;
   objectiveTag: string;
+}
+
+export type SectionNavKind = 'content' | 'activity' | 'assessment';
+
+export interface LessonSectionNavItem {
+  id: string;
+  number: string;
+  title: string;
+  kind: SectionNavKind;
+  activityId?: string;
 }
 
 export const COURSE_INFO = {
@@ -56,12 +68,13 @@ export const LESSON_NAV_ITEMS: LessonNavItem[] = [
   {
     id: 'welcome',
     shortLabel: 'Orientation',
-    title: 'Welcome and Orientation',
+    title: 'Course Orientation',
     duration: '10 min',
     objectiveTag: 'Module Overview',
   },
   {
     id: 'lesson-1',
+    lessonNumber: '1.1',
     shortLabel: 'Lesson 1',
     title: 'Understanding Forces',
     duration: '20 min',
@@ -69,6 +82,7 @@ export const LESSON_NAV_ITEMS: LessonNavItem[] = [
   },
   {
     id: 'lesson-2',
+    lessonNumber: '1.2',
     shortLabel: 'Lesson 2',
     title: "Newton's First Law and Inertia",
     duration: '20 min',
@@ -76,6 +90,7 @@ export const LESSON_NAV_ITEMS: LessonNavItem[] = [
   },
   {
     id: 'lesson-3',
+    lessonNumber: '1.3',
     shortLabel: 'Lesson 3',
     title: "Newton's Second Law",
     duration: '30 min',
@@ -83,6 +98,7 @@ export const LESSON_NAV_ITEMS: LessonNavItem[] = [
   },
   {
     id: 'lesson-4',
+    lessonNumber: '1.4',
     shortLabel: 'Lesson 4',
     title: "Newton's Third Law",
     duration: '25 min',
@@ -90,6 +106,7 @@ export const LESSON_NAV_ITEMS: LessonNavItem[] = [
   },
   {
     id: 'lesson-5',
+    lessonNumber: '1.5',
     shortLabel: 'Lesson 5',
     title: 'Putting the Laws Together',
     duration: '15 min',
@@ -110,6 +127,137 @@ export const LESSON_NAV_ITEMS: LessonNavItem[] = [
     objectiveTag: 'Objectives 1–6',
   },
 ];
+
+export const LESSON_SECTIONS: Record<LessonId, LessonSectionNavItem[]> = {
+  'lesson-1': [
+    { id: 'l1-intro', number: '1.1.1', title: 'Introduction & Objectives', kind: 'content' },
+    { id: 'l1-what-is-force', number: '1.1.2', title: 'What Is a Force?', kind: 'content' },
+    {
+      id: 'l1-combining-forces',
+      number: '1.1.3',
+      title: 'Balanced & Unbalanced Forces',
+      kind: 'content',
+    },
+    {
+      id: 'l1-practice',
+      number: '1.1.4',
+      title: 'Activity: Net Force Calculator',
+      kind: 'activity',
+      activityId: 'net-force-calculator',
+    },
+    {
+      id: 'l1-kc',
+      number: '1.1.5',
+      title: 'Quick Knowledge Check',
+      kind: 'activity',
+      activityId: 'lesson-1-kc',
+    },
+    { id: 'l1-summary', number: '1.1.6', title: 'Lesson Summary', kind: 'content' },
+    { id: 'l1-assessment', number: '1.1.7', title: 'Lesson 1 Assessment', kind: 'assessment' },
+  ],
+  'lesson-2': [
+    { id: 'l2-intro', number: '1.2.1', title: 'Introduction & Objectives', kind: 'content' },
+    { id: 'l2-first-law', number: '1.2.2', title: "Newton's First Law", kind: 'content' },
+    { id: 'l2-inertia-mass', number: '1.2.3', title: 'Inertia and Mass', kind: 'content' },
+    {
+      id: 'l2-bus-scenario',
+      number: '1.2.4',
+      title: 'Activity: The Braking Bus',
+      kind: 'activity',
+      activityId: 'inertia-bus-scenario',
+    },
+    {
+      id: 'l2-kc',
+      number: '1.2.5',
+      title: 'Quick Knowledge Check',
+      kind: 'activity',
+      activityId: 'lesson-2-kc',
+    },
+    { id: 'l2-summary', number: '1.2.6', title: 'Lesson Summary', kind: 'content' },
+    { id: 'l2-assessment', number: '1.2.7', title: 'Lesson 2 Assessment', kind: 'assessment' },
+  ],
+  'lesson-3': [
+    { id: 'l3-intro', number: '1.3.1', title: 'Introduction & Objectives', kind: 'content' },
+    {
+      id: 'l3-second-law',
+      number: '1.3.2',
+      title: 'Force, Mass & F_net = ma',
+      kind: 'content',
+    },
+    {
+      id: 'l3-worked-examples',
+      number: '1.3.3',
+      title: 'Step-by-Step Worked Examples',
+      kind: 'content',
+    },
+    {
+      id: 'l3-simulator',
+      number: '1.3.4',
+      title: 'Activity: Force & Mass Simulator',
+      kind: 'activity',
+      activityId: 'second-law-simulator',
+    },
+    {
+      id: 'l3-kc',
+      number: '1.3.5',
+      title: 'Practice Question',
+      kind: 'activity',
+      activityId: 'lesson-3-kc',
+    },
+    { id: 'l3-summary', number: '1.3.6', title: 'Lesson Summary', kind: 'content' },
+    { id: 'l3-assessment', number: '1.3.7', title: 'Lesson 3 Assessment', kind: 'assessment' },
+  ],
+  'lesson-4': [
+    { id: 'l4-intro', number: '1.4.1', title: 'Introduction & Objectives', kind: 'content' },
+    {
+      id: 'l4-force-pairs',
+      number: '1.4.2',
+      title: 'Forces Always Come in Pairs',
+      kind: 'content',
+    },
+    {
+      id: 'l4-examples',
+      number: '1.4.3',
+      title: 'Everyday Action–Reaction Pairs',
+      kind: 'content',
+    },
+    {
+      id: 'l4-identifier',
+      number: '1.4.4',
+      title: 'Activity: Identify Force Pairs',
+      kind: 'activity',
+      activityId: 'action-reaction-identifier',
+    },
+    {
+      id: 'l4-kc',
+      number: '1.4.5',
+      title: 'Quick Knowledge Check',
+      kind: 'activity',
+      activityId: 'lesson-4-kc',
+    },
+    { id: 'l4-summary', number: '1.4.6', title: 'Lesson Summary', kind: 'content' },
+    { id: 'l4-assessment', number: '1.4.7', title: 'Lesson 4 Assessment', kind: 'assessment' },
+  ],
+  'lesson-5': [
+    { id: 'l5-intro', number: '1.5.1', title: 'Introduction & Objectives', kind: 'content' },
+    { id: 'l5-scenario', number: '1.5.2', title: 'Integrated Motion Scenario', kind: 'content' },
+    {
+      id: 'l5-guided-practice',
+      number: '1.5.3',
+      title: 'Activity: 5-Step Synthesis',
+      kind: 'activity',
+      activityId: 'integrated-synthesis',
+    },
+    {
+      id: 'l5-reflection',
+      number: '1.5.4',
+      title: 'Reflection: Physics Around Me',
+      kind: 'content',
+    },
+    { id: 'l5-summary', number: '1.5.5', title: 'Lesson Summary', kind: 'content' },
+    { id: 'l5-assessment', number: '1.5.6', title: 'Lesson 5 Assessment', kind: 'assessment' },
+  ],
+};
 
 export interface ThirdLawScenario {
   id: string;

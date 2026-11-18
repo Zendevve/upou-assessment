@@ -58,9 +58,9 @@ export const ReflectionActivity: React.FC<ReflectionActivityProps> = ({
     <section
       id="l5-reflection"
       data-section-id="l5-reflection"
-      data-section-label="Physics Around Me Reflection"
+      data-section-label="1.5.4 Reflection: Physics Around Me"
       aria-labelledby="reflection-heading"
-      className="my-8 rounded-md border border-[#CBD5E1] bg-[#F8FAFC] p-5 sm:p-6 space-y-4"
+      className="my-8 scroll-mt-20 lg:scroll-mt-6 rounded-md border border-[#CBD5E1] bg-[#F8FAFC] p-5 sm:p-6 space-y-4"
     >
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#E2E8F0] pb-4">
         <div className="flex items-start gap-2.5">

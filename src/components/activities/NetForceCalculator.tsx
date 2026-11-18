@@ -1,11 +1,11 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, CheckCircle2, RotateCcw } from 'lucide-react';
 import {
   calculateNetForce,
   formatNum,
   HorizontalDirection,
 } from '../../physics/calculations';
-import { rubberband } from '../../utils/fluidMotion';
+import { prefersReducedMotion, rubberband, stepDampedSettle } from '../../utils/fluidMotion';
 
 interface NetForceCalculatorProps {
   isCompleted?: boolean;
@@ -29,11 +29,20 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({
   const [exploredUnbalanced, setExploredUnbalanced] = useState<boolean>(isCompleted);
 
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const settleRafRef = useRef<number | null>(null);
+  const overshootRef = useRef(overshootPx);
+  overshootRef.current = overshootPx;
   const dragMetaRef = useRef<{
     which: 'A' | 'B';
     pointerId: number;
     grabOffsetN: number;
   } | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (settleRafRef.current) cancelAnimationFrame(settleRafRef.current);
+    };
+  }, []);
 
   const parsedA = forceAMag.trim() === '' ? NaN : Number(forceAMag);
   const parsedB = forceBMag.trim() === '' ? NaN : Number(forceBMag);
@@ -116,9 +125,13 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({
     return ((svgX - 220) / 40) * 5;
   };
 
-  const startHandleDrag = (which: 'A' | 'B') => (e: React.PointerEvent<SVGCircleElement>) => {
+  const startHandleDrag = (which: 'A' | 'B') => (e: React.PointerEvent<SVGGElement>) => {
     if (e.button !== 0 && e.pointerType === 'mouse') return;
     e.stopPropagation();
+    if (settleRafRef.current) {
+      cancelAnimationFrame(settleRafRef.current);
+      settleRafRef.current = null;
+    }
     const target = e.currentTarget;
     try {
       target.setPointerCapture(e.pointerId);
@@ -140,7 +153,7 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({
     setDraggingWhich(which);
   };
 
-  const moveHandleDrag = (e: React.PointerEvent<SVGCircleElement>) => {
+  const moveHandleDrag = (e: React.PointerEvent<SVGGElement>) => {
     const meta = dragMetaRef.current;
     if (!meta || meta.pointerId !== e.pointerId) return;
 
@@ -170,7 +183,32 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({
     }
   };
 
-  const endHandleDrag = (e: React.PointerEvent<SVGCircleElement>) => {
+  const startOvershootSpringSettle = () => {
+    if (prefersReducedMotion()) {
+      setOvershootPx({ A: 0, B: 0 });
+      return;
+    }
+    if (settleRafRef.current) cancelAnimationFrame(settleRafRef.current);
+
+    let lastTime = performance.now();
+    const tick = (now: number) => {
+      const dt = (now - lastTime) / 1000;
+      lastTime = now;
+      const cur = overshootRef.current;
+      const nextA = stepDampedSettle(cur.A, 0, dt, 22, 0.2);
+      const nextB = stepDampedSettle(cur.B, 0, dt, 22, 0.2);
+
+      setOvershootPx({ A: nextA.value, B: nextB.value });
+      if (!nextA.settled || !nextB.settled) {
+        settleRafRef.current = requestAnimationFrame(tick);
+      } else {
+        settleRafRef.current = null;
+      }
+    };
+    settleRafRef.current = requestAnimationFrame(tick);
+  };
+
+  const endHandleDrag = (e: React.PointerEvent<SVGGElement>) => {
     const meta = dragMetaRef.current;
     if (!meta || meta.pointerId !== e.pointerId) return;
     try {
@@ -182,7 +220,11 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({
     }
     dragMetaRef.current = null;
     setDraggingWhich(null);
-    setOvershootPx({ A: 0, B: 0 });
+    if (overshootRef.current.A > 0 || overshootRef.current.B > 0) {
+      startOvershootSpringSettle();
+    } else {
+      setOvershootPx({ A: 0, B: 0 });
+    }
   };
 
   const arrowALen = result.valid ? scaleArrow(parsedA, overshootPx.A) : 0;
@@ -299,8 +341,8 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({
                       fill="#2563EB"
                     />
                     <text
-                      x={260 + arrowALen / 2}
-                      y="68"
+                      x={Math.max(288, 260 + arrowALen / 2)}
+                      y="66"
                       textAnchor="middle"
                       fontSize="11"
                       fontWeight="600"
@@ -308,20 +350,25 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({
                     >
                       F1: {formatNum(parsedA)} N
                     </text>
-                    <circle
-                      cx={264 + arrowALen}
-                      cy="80"
-                      r={draggingWhich === 'A' ? 12 : 10}
-                      fill={draggingWhich === 'A' ? 'rgba(37,99,235,0.22)' : 'rgba(37,99,235,0.08)'}
-                      stroke="#2563EB"
-                      strokeOpacity={draggingWhich === 'A' ? 0.65 : 0.25}
-                      strokeWidth="1.5"
+                    <g
                       className="cursor-grab active:cursor-grabbing touch-none"
                       onPointerDown={startHandleDrag('A')}
                       onPointerMove={moveHandleDrag}
                       onPointerUp={endHandleDrag}
                       onPointerCancel={endHandleDrag}
-                    />
+                    >
+                      <circle cx={264 + arrowALen} cy="80" r={22} fill="transparent" />
+                      <circle
+                        cx={264 + arrowALen}
+                        cy="80"
+                        r={draggingWhich === 'A' ? 12 : 10}
+                        fill={draggingWhich === 'A' ? 'rgba(37,99,235,0.22)' : 'rgba(37,99,235,0.08)'}
+                        stroke="#2563EB"
+                        strokeOpacity={draggingWhich === 'A' ? 0.65 : 0.28}
+                        strokeWidth="1.5"
+                        pointerEvents="none"
+                      />
+                    </g>
                   </>
                 ) : (
                   <>
@@ -331,8 +378,8 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({
                       fill="#2563EB"
                     />
                     <text
-                      x={180 - arrowALen / 2}
-                      y="68"
+                      x={Math.min(152, 180 - arrowALen / 2)}
+                      y="66"
                       textAnchor="middle"
                       fontSize="11"
                       fontWeight="600"
@@ -340,20 +387,25 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({
                     >
                       F1: {formatNum(parsedA)} N
                     </text>
-                    <circle
-                      cx={176 - arrowALen}
-                      cy="80"
-                      r={draggingWhich === 'A' ? 12 : 10}
-                      fill={draggingWhich === 'A' ? 'rgba(37,99,235,0.22)' : 'rgba(37,99,235,0.08)'}
-                      stroke="#2563EB"
-                      strokeOpacity={draggingWhich === 'A' ? 0.65 : 0.25}
-                      strokeWidth="1.5"
+                    <g
                       className="cursor-grab active:cursor-grabbing touch-none"
                       onPointerDown={startHandleDrag('A')}
                       onPointerMove={moveHandleDrag}
                       onPointerUp={endHandleDrag}
                       onPointerCancel={endHandleDrag}
-                    />
+                    >
+                      <circle cx={176 - arrowALen} cy="80" r={22} fill="transparent" />
+                      <circle
+                        cx={176 - arrowALen}
+                        cy="80"
+                        r={draggingWhich === 'A' ? 12 : 10}
+                        fill={draggingWhich === 'A' ? 'rgba(37,99,235,0.22)' : 'rgba(37,99,235,0.08)'}
+                        stroke="#2563EB"
+                        strokeOpacity={draggingWhich === 'A' ? 0.65 : 0.28}
+                        strokeWidth="1.5"
+                        pointerEvents="none"
+                      />
+                    </g>
                   </>
                 )}
               </g>
@@ -370,8 +422,8 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({
                       fill="#B91C1C"
                     />
                     <text
-                      x={260 + arrowBLen / 2}
-                      y="120"
+                      x={Math.max(288, 260 + arrowBLen / 2)}
+                      y="121"
                       textAnchor="middle"
                       fontSize="11"
                       fontWeight="600"
@@ -379,20 +431,25 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({
                     >
                       F2: {formatNum(parsedB)} N
                     </text>
-                    <circle
-                      cx={264 + arrowBLen}
-                      cy="106"
-                      r={draggingWhich === 'B' ? 12 : 10}
-                      fill={draggingWhich === 'B' ? 'rgba(185,28,28,0.2)' : 'rgba(185,28,28,0.07)'}
-                      stroke="#B91C1C"
-                      strokeOpacity={draggingWhich === 'B' ? 0.65 : 0.25}
-                      strokeWidth="1.5"
+                    <g
                       className="cursor-grab active:cursor-grabbing touch-none"
                       onPointerDown={startHandleDrag('B')}
                       onPointerMove={moveHandleDrag}
                       onPointerUp={endHandleDrag}
                       onPointerCancel={endHandleDrag}
-                    />
+                    >
+                      <circle cx={264 + arrowBLen} cy="106" r={22} fill="transparent" />
+                      <circle
+                        cx={264 + arrowBLen}
+                        cy="106"
+                        r={draggingWhich === 'B' ? 12 : 10}
+                        fill={draggingWhich === 'B' ? 'rgba(185,28,28,0.2)' : 'rgba(185,28,28,0.07)'}
+                        stroke="#B91C1C"
+                        strokeOpacity={draggingWhich === 'B' ? 0.65 : 0.28}
+                        strokeWidth="1.5"
+                        pointerEvents="none"
+                      />
+                    </g>
                   </>
                 ) : (
                   <>
@@ -402,8 +459,8 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({
                       fill="#B91C1C"
                     />
                     <text
-                      x={180 - arrowBLen / 2}
-                      y="120"
+                      x={Math.min(152, 180 - arrowBLen / 2)}
+                      y="121"
                       textAnchor="middle"
                       fontSize="11"
                       fontWeight="600"
@@ -411,20 +468,25 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({
                     >
                       F2: {formatNum(parsedB)} N
                     </text>
-                    <circle
-                      cx={176 - arrowBLen}
-                      cy="106"
-                      r={draggingWhich === 'B' ? 12 : 10}
-                      fill={draggingWhich === 'B' ? 'rgba(185,28,28,0.2)' : 'rgba(185,28,28,0.07)'}
-                      stroke="#B91C1C"
-                      strokeOpacity={draggingWhich === 'B' ? 0.65 : 0.25}
-                      strokeWidth="1.5"
+                    <g
                       className="cursor-grab active:cursor-grabbing touch-none"
                       onPointerDown={startHandleDrag('B')}
                       onPointerMove={moveHandleDrag}
                       onPointerUp={endHandleDrag}
                       onPointerCancel={endHandleDrag}
-                    />
+                    >
+                      <circle cx={176 - arrowBLen} cy="106" r={22} fill="transparent" />
+                      <circle
+                        cx={176 - arrowBLen}
+                        cy="106"
+                        r={draggingWhich === 'B' ? 12 : 10}
+                        fill={draggingWhich === 'B' ? 'rgba(185,28,28,0.2)' : 'rgba(185,28,28,0.07)'}
+                        stroke="#B91C1C"
+                        strokeOpacity={draggingWhich === 'B' ? 0.65 : 0.28}
+                        strokeWidth="1.5"
+                        pointerEvents="none"
+                      />
+                    </g>
                   </>
                 )}
               </g>

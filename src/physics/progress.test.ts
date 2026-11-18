@@ -254,6 +254,30 @@ test('sanitizeProgressState non-destructively upgrades v2 progress to v3', () =>
   assert.equal(migrated.lessons['lesson-2'].unlocked, true);
   assert.equal(migrated.lastActiveLesson, 'lesson-2');
   assert.equal(migrated.reflection.text, '');
+  assert.deepEqual(migrated.visitedSectionIds, {});
 });
 
+test('visitedSectionIds records unlocked section visits without inflating lesson mastery percentage and rejects locked lessons', () => {
+  let state = createInitialModuleProgress();
+  state = recordSectionVisit(state, 'lesson-1', 'l1-intro', '1.1.1 Introduction & Objectives');
+  state = recordSectionVisit(state, 'lesson-1', 'l1-what-is-force', '1.1.2 What Is a Force?');
+  // Duplicate visit should not duplicate IDs
+  state = recordSectionVisit(state, 'lesson-1', 'l1-intro', '1.1.1 Introduction & Objectives');
+  // Locked lesson visit must be ignored
+  state = recordSectionVisit(state, 'lesson-2', 'l2-first-law', "1.2.2 Newton's First Law");
+
+  assert.deepEqual(state.visitedSectionIds['lesson-1'], ['l1-intro', 'l1-what-is-force']);
+  assert.equal(state.visitedSectionIds['lesson-2'], undefined);
+  assert.equal(calculateLessonProgress('lesson-1', state.lessons['lesson-1']).percentage, 0);
+
+  const sanitized = sanitizeProgressState({
+    ...state,
+    visitedSectionIds: {
+      'lesson-1': ['l1-intro', 'l1-what-is-force'],
+      'lesson-2': ['l2-first-law'],
+    },
+  });
+  assert.deepEqual(sanitized.visitedSectionIds['lesson-1'], ['l1-intro', 'l1-what-is-force']);
+  assert.equal(sanitized.visitedSectionIds['lesson-2'], undefined);
+});
 

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { computePointerVelocity, projectMomentum, rubberband } from './fluidMotion';
+import { computePointerVelocity, projectMomentum, rubberband, stepDampedSettle } from './fluidMotion';
 
 test('projectMomentum projects proportional displacement in direction of velocity', () => {
   const forward = projectMomentum(1000, 0.99);
@@ -30,4 +30,14 @@ test('computePointerVelocity calculates px/s from recent pointer samples', () =>
   const { vx, vy } = computePointerVelocity(samples, 1100);
   assert.equal(Math.round(vx), 600);
   assert.equal(vy, 0);
+});
+
+test('stepDampedSettle decays smoothly toward target and snaps within epsilon', () => {
+  const step1 = stepDampedSettle(20, 0, 0.016, 18, 0.2);
+  assert.equal(step1.settled, false);
+  assert.ok(step1.value > 0 && step1.value < 20);
+
+  const stepNear = stepDampedSettle(0.15, 0, 0.016, 18, 0.2);
+  assert.equal(stepNear.settled, true);
+  assert.equal(stepNear.value, 0);
 });

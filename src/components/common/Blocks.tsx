@@ -52,10 +52,15 @@ export const LessonHeader: React.FC<LessonHeaderProps> = ({
 
 export const LessonIntro: React.FC<{
   intro: LessonIntroSpec;
-}> = ({ intro }) => (
+  sectionId?: string;
+  sectionLabel?: string;
+}> = ({ intro, sectionId, sectionLabel }) => (
   <section
+    id={sectionId}
+    data-section-id={sectionId}
+    data-section-label={sectionLabel}
     aria-label="Lesson introduction and learning objectives"
-    className="mt-6 rounded-md border border-[#BFDBFE] bg-[#EFF6FF] p-5 sm:p-6 space-y-4"
+    className="mt-6 scroll-mt-20 lg:scroll-mt-6 rounded-md border border-[#BFDBFE] bg-[#EFF6FF] p-5 sm:p-6 space-y-4"
   >
     <div>
       <p className="text-xs font-semibold tracking-[0.01em] text-[#1E40AF] flex items-center gap-1.5">
@@ -95,10 +100,15 @@ export const LessonSummary: React.FC<{
   lessonLabel: string;
   summary: LessonSummarySpec;
   onOpenReference?: () => void;
-}> = ({ lessonLabel, summary, onOpenReference }) => (
+  sectionId?: string;
+  sectionLabel?: string;
+}> = ({ lessonLabel, summary, onOpenReference, sectionId, sectionLabel }) => (
   <section
+    id={sectionId}
+    data-section-id={sectionId}
+    data-section-label={sectionLabel}
     aria-label={`${lessonLabel} key summary`}
-    className="my-8 rounded-md border border-[#CBD5E1] bg-[#F8FAFC] p-5 sm:p-6 space-y-4"
+    className="my-8 scroll-mt-20 lg:scroll-mt-6 rounded-md border border-[#CBD5E1] bg-[#F8FAFC] p-5 sm:p-6 space-y-4"
   >
     <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E2E8F0] pb-3">
       <div className="flex items-center gap-2">
@@ -288,6 +298,8 @@ interface KnowledgeCheckProps {
   onPassed?: () => void;
   alreadyPassed?: boolean;
   isOptionalPractice?: boolean;
+  sectionId?: string;
+  sectionLabel?: string;
 }
 
 export const KnowledgeCheck: React.FC<KnowledgeCheckProps> = ({
@@ -305,6 +317,8 @@ export const KnowledgeCheck: React.FC<KnowledgeCheckProps> = ({
   onPassed,
   alreadyPassed = false,
   isOptionalPractice = false,
+  sectionId,
+  sectionLabel,
 }) => {
   const [selectedId, setSelectedId] = useState<string>('');
   const [numericInput, setNumericInput] = useState<string>('');
@@ -352,8 +366,11 @@ export const KnowledgeCheck: React.FC<KnowledgeCheckProps> = ({
 
   return (
     <section
+      id={sectionId}
+      data-section-id={sectionId}
+      data-section-label={sectionLabel}
       aria-labelledby={`kc-heading-${id}`}
-      className={`my-7 rounded-md border p-5 sm:p-6 ${
+      className={`my-7 scroll-mt-20 lg:scroll-mt-6 rounded-md border p-5 sm:p-6 ${
         isOptionalPractice
           ? 'border-[#CBD5E1] bg-white'
           : 'border-[#CBD5E1] bg-[#F8FAFC]'

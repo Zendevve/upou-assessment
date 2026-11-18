@@ -86,6 +86,22 @@ function sanitizeLastVisitedSections(raw: unknown): Partial<Record<ScreenId, Sec
   return out;
 }
 
+function sanitizeVisitedSectionIds(raw: unknown): Partial<Record<LessonId, string[]>> {
+  if (!raw || typeof raw !== 'object') return {};
+  const out: Partial<Record<LessonId, string[]>> = {};
+  for (const id of LESSON_IDS) {
+    const val = (raw as Record<string, unknown>)[id];
+    if (!Array.isArray(val)) continue;
+    const clean = Array.from(
+      new Set(val.filter((item): item is string => typeof item === 'string' && item.trim().length > 0))
+    );
+    if (clean.length > 0) {
+      out[id] = clean;
+    }
+  }
+  return out;
+}
+
 function sanitizeReflection(raw: unknown): ReflectionRecord {
   if (!raw || typeof raw !== 'object') {
     return { text: '', updatedAt: null, sampleViewed: false };
@@ -168,6 +184,7 @@ export function sanitizeProgressState(raw: unknown): ModuleProgressState {
     currentScreen,
     lastActiveLesson,
     lastVisitedSections: sanitizeLastVisitedSections(obj.lastVisitedSections),
+    visitedSectionIds: sanitizeVisitedSectionIds(obj.visitedSectionIds),
     lessons,
     finalAssessmentUnlocked: Boolean(obj.finalAssessmentUnlocked),
     finalAssessmentCompleted: Boolean(obj.finalAssessmentCompleted),

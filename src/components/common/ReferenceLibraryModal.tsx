@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { BookOpen, Calculator, ChevronDown, ChevronUp, Search, X } from 'lucide-react';
+import { animate } from 'motion';
+import { BookOpen, Calculator, ChevronDown, Search, X } from 'lucide-react';
 import { FORMULA_REFERENCE, GLOSSARY_TERMS } from '../../data/moduleContent';
+import { prefersReducedMotion } from '../../utils/fluidMotion';
 
 interface ReferenceLibraryModalProps {
   isOpen: boolean;
@@ -13,17 +15,98 @@ export const ReferenceLibraryModal: React.FC<ReferenceLibraryModalProps> = ({
   initialTab = 'glossary',
   onClose,
 }) => {
+  const [isRendered, setIsRendered] = useState(isOpen);
   const [activeTab, setActiveTab] = useState<'glossary' | 'formulas'>(initialTab);
   const [query, setQuery] = useState('');
   const [expandedTerms, setExpandedTerms] = useState<Record<string, boolean>>({});
+
   const closeBtnRef = useRef<HTMLButtonElement | null>(null);
+  const backdropRef = useRef<HTMLDivElement | null>(null);
+  const cardRef = useRef<HTMLDivElement | null>(null);
+  const cardAnimRef = useRef<{ stop?: () => void } | null>(null);
+  const backdropAnimRef = useRef<{ stop?: () => void } | null>(null);
+  const isOpenRef = useRef(isOpen);
+  isOpenRef.current = isOpen;
 
   useEffect(() => {
     if (isOpen) {
+      setIsRendered(true);
       setActiveTab(initialTab);
-      setTimeout(() => closeBtnRef.current?.focus(), 20);
+      const timer = window.setTimeout(() => closeBtnRef.current?.focus(), 30);
+      return () => window.clearTimeout(timer);
     }
   }, [isOpen, initialTab]);
+
+  useEffect(() => {
+    if (!isRendered) return;
+    const cardEl = cardRef.current;
+    const backdropEl = backdropRef.current;
+    if (!cardEl || !backdropEl) return;
+
+    cardAnimRef.current?.stop?.();
+    backdropAnimRef.current?.stop?.();
+
+    const reduced = prefersReducedMotion();
+
+    if (isOpen) {
+      if (reduced) {
+        cardEl.style.transform = 'none';
+        cardEl.style.filter = 'none';
+        cardEl.style.opacity = '0';
+        backdropEl.style.opacity = '0';
+        cardAnimRef.current = animate(cardEl, { opacity: 1 }, { duration: 0.13 });
+        backdropAnimRef.current = animate(backdropEl, { opacity: 1 }, { duration: 0.13 });
+      } else {
+        cardEl.style.opacity = '0';
+        cardEl.style.transform = 'translateY(6px) scale(0.96)';
+        cardEl.style.filter = 'blur(4px)';
+        backdropEl.style.opacity = '0';
+
+        backdropAnimRef.current = animate(
+          backdropEl,
+          { opacity: 1 },
+          { duration: 0.18, ease: [0.23, 1, 0.32, 1] }
+        );
+        cardAnimRef.current = animate(
+          cardEl,
+          {
+            opacity: 1,
+            transform: 'translateY(0px) scale(1)',
+            filter: 'blur(0px)',
+          },
+          { duration: 0.22, ease: [0.23, 1, 0.32, 1] }
+        );
+      }
+    } else {
+      if (reduced) {
+        backdropAnimRef.current = animate(backdropEl, { opacity: 0 }, { duration: 0.11 });
+        const exitCard = animate(cardEl, { opacity: 0 }, { duration: 0.11 });
+        cardAnimRef.current = exitCard;
+        (exitCard as { finished?: Promise<unknown> }).finished?.then(() => {
+          if (!isOpenRef.current) setIsRendered(false);
+        });
+      } else {
+        backdropAnimRef.current = animate(
+          backdropEl,
+          { opacity: 0 },
+          { duration: 0.14, ease: [0.23, 1, 0.32, 1] }
+        );
+        const exitCard = animate(
+          cardEl,
+          {
+            opacity: 0,
+            transform: 'translateY(4px) scale(0.965)',
+            filter: 'blur(3px)',
+          },
+          { duration: 0.15, ease: [0.23, 1, 0.32, 1] }
+        );
+        cardAnimRef.current = exitCard;
+        (exitCard as { finished?: Promise<unknown> }).finished?.then(() => {
+          if (!isOpenRef.current) setIsRendered(false);
+        });
+      }
+    }
+  }, [isOpen, isRendered]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -48,7 +131,7 @@ export const ReferenceLibraryModal: React.FC<ReferenceLibraryModalProps> = ({
     );
   }, [query]);
 
-  if (!isOpen) return null;
+  if (!isRendered) return null;
 
   const toggleTerm = (term: string) => {
     setExpandedTerms((prev) => ({ ...prev, [term]: !prev[term] }));
@@ -72,12 +155,17 @@ export const ReferenceLibraryModal: React.FC<ReferenceLibraryModalProps> = ({
       aria-labelledby="reference-modal-title"
     >
       <div
-        className="fixed inset-0 bg-slate-900/50"
+        ref={backdropRef}
+        className="fixed inset-0 bg-slate-900/50 backdrop-blur-[2px]"
         onClick={onClose}
         aria-hidden="true"
       />
 
-      <div className="surface-enter relative z-10 flex max-h-[90vh] w-full max-w-3xl flex-col rounded-lg border border-[#CBD5E1] bg-white shadow-2xl">
+      <div
+        ref={cardRef}
+        style={{ transformOrigin: 'center center' }}
+        className="relative z-10 flex max-h-[90vh] w-full max-w-3xl flex-col rounded-lg border border-[#CBD5E1] bg-white shadow-2xl"
+      >
         {/* Header */}
         <div className="flex items-start justify-between gap-3 border-b border-[#E2E8F0] px-5 py-4">
           <div>
@@ -99,41 +187,62 @@ export const ReferenceLibraryModal: React.FC<ReferenceLibraryModalProps> = ({
           </button>
         </div>
 
-        {/* Tabs */}
-        <div className="flex flex-wrap items-center gap-2 border-b border-[#E2E8F0] bg-[#F8FAFC] px-5 py-2.5">
-          <button
-            type="button"
-            onClick={() => setActiveTab('glossary')}
-            aria-pressed={activeTab === 'glossary'}
-            className={`tactile-press inline-flex items-center gap-1.5 rounded-md px-3.5 py-2 text-xs sm:text-sm font-medium min-h-[40px] ${
-              activeTab === 'glossary'
-                ? 'bg-[#2563EB] text-white'
-                : 'border border-[#CBD5E1] bg-white text-[#334155] hover:bg-slate-50'
-            }`}
+        {/* Segmented Tabs with clip-path active indicator */}
+        <div className="border-b border-[#E2E8F0] bg-[#F8FAFC] px-5 py-2.5">
+          <div
+            role="tablist"
+            aria-label="Reference sections"
+            className="relative grid grid-cols-2 max-w-md rounded-md border border-[#CBD5E1] bg-white p-1"
           >
-            <BookOpen className="h-4 w-4" aria-hidden="true" />
-            <span>Physics Glossary ({GLOSSARY_TERMS.length})</span>
-          </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'glossary'}
+              onClick={() => setActiveTab('glossary')}
+              className="tactile-press relative z-10 inline-flex items-center justify-center gap-1.5 rounded px-3 py-1.5 text-xs sm:text-sm font-medium text-[#334155] min-h-[36px]"
+            >
+              <BookOpen className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <span className="truncate">Physics Glossary ({GLOSSARY_TERMS.length})</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setActiveTab('formulas')}
-            aria-pressed={activeTab === 'formulas'}
-            className={`tactile-press inline-flex items-center gap-1.5 rounded-md px-3.5 py-2 text-xs sm:text-sm font-medium min-h-[40px] ${
-              activeTab === 'formulas'
-                ? 'bg-[#2563EB] text-white'
-                : 'border border-[#CBD5E1] bg-white text-[#334155] hover:bg-slate-50'
-            }`}
-          >
-            <Calculator className="h-4 w-4" aria-hidden="true" />
-            <span>Formula Reference</span>
-          </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'formulas'}
+              onClick={() => setActiveTab('formulas')}
+              className="tactile-press relative z-10 inline-flex items-center justify-center gap-1.5 rounded px-3 py-1.5 text-xs sm:text-sm font-medium text-[#334155] min-h-[36px]"
+            >
+              <Calculator className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <span className="truncate">Formula Reference</span>
+            </button>
+
+            {/* Clipped active overlay layer (compositor-accelerated wipe) */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-1 z-20 grid grid-cols-2 rounded bg-[#2563EB] text-white transition-[clip-path] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]"
+              style={{
+                clipPath:
+                  activeTab === 'glossary'
+                    ? 'inset(0 50% 0 0 round 4px)'
+                    : 'inset(0 0 0 50% round 4px)',
+              }}
+            >
+              <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium">
+                <BookOpen className="h-4 w-4 shrink-0" aria-hidden="true" />
+                <span className="truncate">Physics Glossary ({GLOSSARY_TERMS.length})</span>
+              </span>
+              <span className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-medium">
+                <Calculator className="h-4 w-4 shrink-0" aria-hidden="true" />
+                <span className="truncate">Formula Reference</span>
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto px-5 py-4">
+        <div className="nav-scroll-fade flex-1 overflow-y-auto px-5 py-4">
           {activeTab === 'glossary' ? (
-            <div className="space-y-4">
+            <div key="tab-glossary" className="screen-enter space-y-4">
               <div className="flex flex-wrap items-center gap-2.5">
                 <div className="relative flex-1 min-w-[220px]">
                   <label htmlFor="glossary-search-input" className="sr-only">
@@ -178,7 +287,7 @@ export const ReferenceLibraryModal: React.FC<ReferenceLibraryModalProps> = ({
                           type="button"
                           onClick={() => toggleTerm(entry.term)}
                           aria-expanded={isExpanded}
-                          className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left min-h-[44px] hover:bg-slate-100/70 rounded-md"
+                          className="tactile-press w-full flex items-center justify-between gap-3 px-4 py-3 text-left min-h-[44px] hover:bg-slate-100/70 rounded-md"
                         >
                           <div className="min-w-0">
                             <span className="text-sm sm:text-base font-semibold text-[#172033]">
@@ -188,15 +297,16 @@ export const ReferenceLibraryModal: React.FC<ReferenceLibraryModalProps> = ({
                               {entry.unitsOrNotation}
                             </span>
                           </div>
-                          {isExpanded ? (
-                            <ChevronUp className="h-4 w-4 shrink-0 text-[#475569]" aria-hidden="true" />
-                          ) : (
-                            <ChevronDown className="h-4 w-4 shrink-0 text-[#475569]" aria-hidden="true" />
-                          )}
+                          <ChevronDown
+                            className={`h-4 w-4 shrink-0 text-[#475569] transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] ${
+                              isExpanded ? 'rotate-180' : ''
+                            }`}
+                            aria-hidden="true"
+                          />
                         </button>
 
                         {isExpanded && (
-                          <div className="border-t border-[#E2E8F0] bg-white px-4 py-3 text-sm space-y-2 rounded-b-md">
+                          <div className="accordion-reveal border-t border-[#E2E8F0] bg-white px-4 py-3 text-sm space-y-2 rounded-b-md">
                             <p className="text-[#172033]">{entry.definition}</p>
                             <p className="text-xs sm:text-sm text-[#475569]">
                               <strong className="text-[#334155]">Everyday example:</strong> {entry.example}
@@ -210,7 +320,7 @@ export const ReferenceLibraryModal: React.FC<ReferenceLibraryModalProps> = ({
               )}
             </div>
           ) : (
-            <div className="space-y-5">
+            <div key="tab-formulas" className="screen-enter space-y-5">
               <div className="grid gap-3">
                 {FORMULA_REFERENCE.formulas.map((f) => (
                   <div

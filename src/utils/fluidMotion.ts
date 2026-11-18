@@ -86,3 +86,30 @@ export function prefersReducedMotion(): boolean {
   }
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
+
+/**
+ * Critically damped exponential decay step toward target (dt in seconds).
+ * Frame-rate independent: value approaches target smoothly and snaps when within epsilon.
+ */
+export function stepDampedSettle(
+  current: number,
+  target: number,
+  dtSec: number,
+  speed = 18,
+  epsilon = 0.2
+): { value: number; settled: boolean } {
+  if (!Number.isFinite(current) || !Number.isFinite(target) || dtSec <= 0) {
+    return { value: target, settled: true };
+  }
+  const delta = target - current;
+  if (Math.abs(delta) <= epsilon) {
+    return { value: target, settled: true };
+  }
+  const factor = 1 - Math.exp(-speed * Math.min(0.05, dtSec));
+  const next = current + delta * factor;
+  if (Math.abs(target - next) <= epsilon) {
+    return { value: target, settled: true };
+  }
+  return { value: next, settled: false };
+}
+

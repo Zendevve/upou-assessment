@@ -53,13 +53,17 @@ export const Lesson5Synthesis: React.FC<Lesson5Props> = ({
         isCompleted={lessonRecord.completed}
       />
 
-      <LessonIntro intro={LESSON_INTROS['lesson-5']} />
+      <LessonIntro
+        intro={LESSON_INTROS['lesson-5']}
+        sectionId="l5-intro"
+        sectionLabel="1.5.1 Introduction & Objectives"
+      />
 
       <section
         id="l5-scenario"
         data-section-id="l5-scenario"
-        data-section-label="1. Integrated Scenario"
-        className="mt-8 space-y-4 text-sm sm:text-base text-[#334155]"
+        data-section-label="1.5.2 Integrated Motion Scenario"
+        className="mt-8 scroll-mt-20 lg:scroll-mt-6 space-y-4 text-sm sm:text-base text-[#334155]"
       >
         <h2 className="text-xl font-semibold text-[#172033]">
           1. Integrated Real-World Scenario
@@ -103,7 +107,8 @@ export const Lesson5Synthesis: React.FC<Lesson5Props> = ({
       <section
         id="l5-guided-practice"
         data-section-id="l5-guided-practice"
-        data-section-label="2. 5-Step Guided Practice"
+        data-section-label="1.5.3 Activity: 5-Step Synthesis"
+        className="scroll-mt-20 lg:scroll-mt-6"
       >
         <IntegratedSynthesisActivity
           isCompleted={Boolean(lessonRecord.activities['integrated-synthesis'])}
@@ -146,12 +151,15 @@ export const Lesson5Synthesis: React.FC<Lesson5Props> = ({
         lessonLabel="Lesson 5"
         summary={LESSON_SUMMARIES['lesson-5']}
         onOpenReference={onOpenReference}
+        sectionId="l5-summary"
+        sectionLabel="1.5.5 Lesson Summary"
       />
 
       <section
         id="l5-assessment"
         data-section-id="l5-assessment"
-        data-section-label="Lesson 5 Mastery Assessment"
+        data-section-label="1.5.6 Lesson 5 Assessment"
+        className="scroll-mt-20 lg:scroll-mt-6"
       >
         <LessonAssessment
           lessonId="lesson-5"
