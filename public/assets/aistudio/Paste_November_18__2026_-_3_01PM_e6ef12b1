@@ -1,0 +1,1426 @@
+Absolutely. I'm going to give you a complete **build specification and master prompt** that you can hand directly to OpenCode, oh-my-pi, or whichever coding agent you're using.
+
+The goal is to eliminate guesswork. Your agent should know exactly what to build, what educational content to include, how the interface should behave, what files to produce, how to test everything, and what the final submission should look like.
+
+I want the result to feel like a professionally developed university distance-learning course, not a generic AI-generated educational website.
+
+# **Project: Physics in Everyday Life — Module 1**
+
+Build specification
+
+Assessment deliverable
+
+# **Understanding Forces and Newton's Laws**
+
+**An interactive, self-paced online learning module for secondary-level students.**
+
+Target audience
+
+**Secondary students**
+
+Learning time
+
+**Approximately 2 hours**
+
+Delivery
+
+**Online, self-paced**
+
+Primary format
+
+**Responsive web application**
+
+Technology
+
+**HTML, CSS, JavaScript**
+
+Connectivity
+
+**Low-bandwidth friendly**
+
+## **1. What the agent must deliver**
+
+The project has three major outputs.
+
+**Deliverable 1 — Interactive learning module**
+
+Highest priority
+
+A complete, usable educational experience with lessons, interactive physics demonstrations, quizzes, progress tracking, and a final assessment.
+
+**Deliverable 2 — Instructional design rationale**
+
+A polished PDF explaining learning objectives, instructional decisions, activity design, assessment alignment, accessibility, and technical implementation.
+
+**Deliverable 3 — Interview presentation**
+
+A concise presentation explaining the module, demonstrating its features, and defending the design decisions.
+
+The module itself is the centerpiece. The other two artifacts should support it, not distract from it.
+
+## **2. System architecture and relationships**
+
+Keep the implementation simple. This is an assessment prototype, not a production LMS.
+
+```
+                 LEARNER
+                    |
+                    v
+          MODULE 1 WEB APPLICATION
+                    |
+          +---------+---------+
+          |         |         |
+          v         v         v
+       Lessons   Activities  Assessments
+          |         |         |
+          v         v         v
+       Learning   Feedback   Scoring
+          |         |         |
+          +---------+---------+
+                    |
+                    v
+           PROGRESS TRACKING
+                    |
+                    v
+             COMPLETION VIEW
+
+       SUPPORTING DOCUMENTATION
+          /                 \
+         v                   v
+  Design Rationale     Interview Deck
+```
+
+Technical architecture:
+
+- Frontend: semantic HTML5.
+- Styling: custom CSS.
+- Functionality: vanilla JavaScript.
+- Persistence: localStorage, with graceful fallback.
+- Illustrations: local SVG assets.
+- Calculations: native JavaScript.
+- Documentation: PDF and presentation.
+- No backend or authentication required.
+- No external API dependency.
+- No paid service dependency.
+
+Use a modular architecture so the code remains maintainable.
+
+# **3. Master prompt for your coding agent**
+
+Copy everything inside this writing block and give it to your coding agent as its primary project instruction.
+
+# MASTER PROJECT BRIEF
+
+## Physics in Everyday Life: Forces and Motion
+
+### Module 1 — Understanding Forces and Newton's Laws
+
+You are acting as a senior instructional designer, eLearning developer, UX/UI designer, frontend engineer, and educational content specialist.
+
+Your assignment is to develop a complete, polished, interactive, self-paced online learning module for a secondary-level physics course.
+
+This is a practical assessment for an eLearning development position. The quality of the instructional design, technical implementation, accessibility, visual design, and ability to explain development decisions are all important.
+
+Do not produce a static mockup, generic landing page, or simple collection of slides.
+
+Build an actual learning experience that a secondary-level student can independently use from beginning to end.
+
+---
+
+# PART A — PROJECT CONTEXT
+
+## Course information
+
+Course title: Physics in Everyday Life: Forces and Motion
+
+Target learners: Secondary-level students with introductory mathematics knowledge.
+
+Delivery: Fully online, self-paced, designed for independent learning with limited instructor facilitation.
+
+Total course learning time: Approximately 6 hours across three modules.
+
+This project covers Module 1 only.
+
+Proposed Module 1 learning time: Approximately 2 hours.
+
+Learners may use a basic calculator.
+
+The module must remain understandable and usable on mobile devices and low-bandwidth connections.
+
+## Course learning outcomes
+
+By the end of the entire short course, learners should be able to:
+
+CLO 1. Explain fundamental concepts of force and motion using Newton's laws.
+
+CLO 2. Apply Newton's laws to analyze familiar situations involving forces and motion.
+
+CLO 3. Interpret simple real-world motion scenarios using physical principles and basic calculations.
+
+## Module 1 scope
+
+Understanding Forces and Newton's Laws.
+
+Required concepts:
+
+- Force
+- Net force
+- Inertia
+- Mass
+- Acceleration
+- Newton's First Law
+- Newton's Second Law
+- Newton's Third Law
+
+Introduce friction and normal force only as contextual examples. Detailed treatment belongs in Module 2.
+
+## Module-level learning objectives
+
+By the end of this module, learners should be able to:
+
+1. Define force and distinguish between balanced and unbalanced forces.
+2. Explain inertia and its relationship with mass.
+3. Describe Newton's First Law using familiar real-world situations.
+4. Apply Newton's Second Law using F_net = ma.
+5. Explain Newton's Third Law by identifying interacting objects and their force pairs.
+6. Interpret simple force-and-motion situations using Newton's laws.
+
+Use measurable verbs and align every learning activity and assessment with these objectives.
+
+---
+
+# PART B — DEVELOPMENT PHILOSOPHY
+
+Follow these principles throughout the project.
+
+## 1. Learning before decoration
+
+The interface must support comprehension.
+
+Do not add interactions, animations, decorative cards, or illustrations simply to make the interface look impressive.
+
+Every significant design decision should serve a learning purpose.
+
+## 2. Self-paced learning
+
+Assume that learners have no instructor immediately available.
+
+Every lesson must include:
+
+- Clear instructions.
+- An explanation of the concept.
+- A relevant real-world example.
+- An opportunity to practice.
+- Immediate feedback.
+- A short knowledge check.
+- A clear indication of what to do next.
+
+Avoid unexplained navigation, ambiguous buttons, and activities that require instructor intervention.
+
+## 3. Progressive learning
+
+Organize the content from simple to complex.
+
+Start with everyday experiences, introduce the underlying physics, and gradually move toward calculations and integrated applications.
+
+## 4. Inclusive learning
+
+Use clear language appropriate for secondary-level students.
+
+Explain scientific terminology before expecting learners to use it.
+
+Never assume that learners already understand an unfamiliar formula or diagram.
+
+## 5. Honest technical implementation
+
+Do not claim features that do not work.
+
+Test every interactive element.
+
+Do not include fake buttons, fake navigation, nonfunctional controls, or placeholder content in the final deliverable.
+
+---
+
+# PART C — INFORMATION ARCHITECTURE
+
+Build the module with the following learning sequence.
+
+## Screen 1: Welcome and orientation
+
+Include:
+
+- Course title.
+- Module number.
+- Module title.
+- Brief introduction.
+- Estimated completion time.
+- Learning objectives.
+- Prerequisite knowledge.
+- Required materials.
+- Instructions for navigating the module.
+- How activities and assessments work.
+- A prominent Start Learning button.
+
+Introduction:
+
+"Everyday life is full of motion. A bus accelerates, a ball falls, a person walks, and a cart moves when pushed. But what causes these changes? In this module, you will explore forces and discover how Isaac Newton's three laws help explain the movement of objects around us."
+
+Explain that students can study at their own pace and revisit lessons whenever needed.
+
+## Screen 2: Lesson 1 — Understanding Forces
+
+Learning objective:\
+Define force and distinguish between balanced and unbalanced forces.
+
+Cover:
+
+- What is a force?
+- Pushes and pulls.
+- Force as a vector quantity.
+- Magnitude and direction.
+- SI unit: newton (N).
+- Multiple forces acting on one object.
+- Net force.
+- Balanced and unbalanced forces.
+
+Important scientific distinctions:
+
+A force is an interaction that can change an object's motion.
+
+Velocity includes both speed and direction.
+
+An object can move while experiencing zero net force. In this situation, its velocity remains constant.
+
+Balanced forces mean the vector sum of forces is zero, not necessarily that no forces exist.
+
+For one-dimensional horizontal forces, calculate net force by assigning a positive direction and adding signed forces.
+
+Include a visual comparison:
+
+Example A:\
+A box experiences 10 N to the right and 10 N to the left.
+
+Net force = 0 N.
+
+Example B:\
+A box experiences 15 N to the right and 5 N to the left.
+
+Net force = 10 N to the right.
+
+Include a simple interactive net-force activity.
+
+The learner should be able to enter or select opposing forces and see the resulting net force and direction.
+
+Include an explanation of the result.
+
+Knowledge check:\
+Ask the learner to identify whether a box with equal opposing forces has a zero net force.
+
+## Screen 3: Lesson 2 — Newton's First Law and Inertia
+
+Learning objective:\
+Explain inertia and its relationship with mass.
+
+Cover:
+
+- Newton's First Law.
+- Inertia.
+- Mass as a measure of inertia.
+- Objects at rest.
+- Objects moving with constant velocity.
+- Nonzero net external force.
+- Common misconceptions.
+
+Use the formal statement:
+
+"An object remains at rest or continues moving with constant velocity unless acted upon by a nonzero net external force."
+
+Explain this in simpler language.
+
+Real-world example:
+
+A passenger standing inside a moving bus appears to move forward when the bus suddenly brakes.
+
+Explain that the passenger's body tends to maintain its previous velocity while the bus slows down.
+
+Another example:
+
+A stationary football does not begin moving until an external force acts on it.
+
+Include an interactive scenario:
+
+Present a bus that suddenly brakes.
+
+Ask:
+
+"Why does a standing passenger tend to move forward relative to the bus?"
+
+Provide multiple answer choices.
+
+After the learner answers, explain the correct answer and why the alternatives are incorrect.
+
+Include a misconception callout:
+
+"Inertia is not a force. It is the tendency of an object to resist changes in its velocity."
+
+Explain that greater mass means greater inertia.
+
+## Screen 4: Lesson 3 — Newton's Second Law
+
+Learning objective:\
+Apply Newton's Second Law using F_net = ma.
+
+This is a major lesson. Give it adequate instructional depth.
+
+Cover:
+
+- Relationship between net force, mass, and acceleration.
+- The equation F_net = ma.
+- Meaning of each variable.
+- Units.
+- Rearranging the formula.
+- Direction of acceleration.
+- Effect of changing force.
+- Effect of changing mass.
+
+Formula:
+
+F_net = ma
+
+Where:
+
+F_net = net force, measured in newtons (N).
+
+m = mass, measured in kilograms (kg).
+
+a = acceleration, measured in metres per second squared (m/s²).
+
+Rearranged formula:
+
+a = F_net / m
+
+Include an explanation of why acceleration points in the direction of net force.
+
+Worked Example A:
+
+A 5 kg box experiences a net horizontal force of 20 N to the right.
+
+Given:\
+m = 5 kg\
+F_net = 20 N
+
+Formula:\
+a = F_net / m
+
+Substitution:\
+a = 20 N / 5 kg
+
+Answer:\
+a = 4 m/s² to the right.
+
+Worked Example B:
+
+A box is pushed with 15 N to the right while friction acts with 5 N to the left.
+
+Mass = 5 kg.
+
+Step 1: Calculate net force.
+
+F_net = 15 N - 5 N = 10 N to the right.
+
+Step 2: Calculate acceleration.
+
+a = 10 N / 5 kg = 2 m/s² to the right.
+
+Include a clearly explained step-by-step solution.
+
+### Interactive experiment: Force, mass, and acceleration
+
+Build a working interactive simulation.
+
+Allow learners to adjust:
+
+- Applied net force.
+- Object mass.
+
+Show:
+
+- Selected force.
+- Selected mass.
+- Calculated acceleration.
+- Direction of acceleration.
+- A simple visual representation of the object.
+- A short explanatory statement.
+
+The simulation must demonstrate:
+
+For constant mass:\
+Increasing net force increases acceleration.
+
+For constant net force:\
+Increasing mass decreases acceleration.
+
+Use sliders or accessible numeric controls.
+
+All displayed values must be mathematically correct.
+
+Include sensible input constraints. Do not allow zero or negative mass.
+
+Provide a Reset button.
+
+Do not use an elaborate physics engine. A lightweight JavaScript calculation and simple SVG or CSS illustration are sufficient.
+
+Include a practice question requiring the learner to calculate acceleration.
+
+## Screen 5: Lesson 4 — Newton's Third Law
+
+Learning objective:\
+Explain Newton's Third Law by identifying interacting objects and their force pairs.
+
+Use the formal statement:
+
+"When object A exerts a force on object B, object B exerts an equal-magnitude force in the opposite direction on object A."
+
+Cover:
+
+- Action-reaction pairs.
+- Equal magnitude.
+- Opposite direction.
+- Different objects.
+- Why the forces do not cancel each other.
+
+Use everyday examples:
+
+1. Walking: your foot pushes the ground backward, and the ground pushes your foot forward.
+2. Jumping: your feet push downward on the ground, and the ground pushes upward on your body.
+3. Pushing a wall: your hands push the wall, and the wall pushes your hands in the opposite direction.
+
+Include an important misconception:
+
+"Action and reaction forces do not cancel because they act on different objects."
+
+Create an interactive identification activity.
+
+Show a situation and ask:
+
+- Which object exerts the first force?
+- Which object experiences that force?
+- What is the reaction force?
+- Which direction does each force act?
+
+Give immediate explanatory feedback.
+
+## Screen 6: Lesson 5 — Putting the Laws Together
+
+Learning objective:\
+Interpret simple real-world force-and-motion situations using Newton's laws.
+
+Present an integrated scenario:
+
+"A student pushes a 5 kg box across a horizontal floor with a force of 15 N. Friction acts on the box with a force of 5 N in the opposite direction."
+
+Ask the learner to:
+
+1. Identify the forces.
+2. Calculate the horizontal net force.
+3. Determine the acceleration.
+4. Identify the Newton's law used.
+5. Explain the resulting motion.
+
+Correct interpretation:
+
+Applied force = 15 N right.
+
+Friction = 5 N left.
+
+Net horizontal force = 10 N right.
+
+Mass = 5 kg.
+
+Acceleration = 2 m/s² right.
+
+Newton's Second Law explains the relationship.
+
+Clarify that the example focuses on horizontal acceleration. If the vertical forces are balanced, there is no vertical acceleration.
+
+Introduce gravity and normal force only as contextual vocabulary, leaving detailed free-body diagrams for Module 2.
+
+---
+
+# PART D — INTERACTIVE LEARNING DESIGN
+
+Implement at least the following interactions.
+
+## Activity 1: Net Force Calculator
+
+Purpose:\
+Help learners understand how opposing forces combine.
+
+Requirements:
+
+- Editable force values.
+- Direction selection.
+- Automatic net force calculation.
+- Visual arrows.
+- Direction label.
+- Clear feedback.
+- Reset functionality.
+
+Example:
+
+Input: 15 N right, 5 N left.
+
+Output: 10 N right.
+
+Handle equal forces correctly.
+
+## Activity 2: Inertia Scenario
+
+Purpose:\
+Help learners understand Newton's First Law.
+
+Requirements:
+
+- Scenario-based question.
+- At least three answer options.
+- Immediate correctness feedback.
+- Explanation of the concept.
+- Ability to retry.
+
+## Activity 3: Newton's Second Law Simulator
+
+Purpose:\
+Allow learners to experiment with force and mass.
+
+Requirements:
+
+- Force input or slider.
+- Mass input or slider.
+- Automatic acceleration calculation.
+- Visual result.
+- Units displayed correctly.
+- Reset functionality.
+- Accessible controls.
+- Explanation of the relationship.
+
+## Activity 4: Action-Reaction Identification
+
+Purpose:\
+Reinforce Newton's Third Law.
+
+Requirements:
+
+- At least three real-world scenarios.
+- Identification of the two interacting objects.
+- Force direction.
+- Feedback explaining why the pair does not cancel.
+
+## Activity 5: Quick Knowledge Checks
+
+Include small formative questions throughout the lessons.
+
+Provide immediate feedback and allow retries.
+
+Do not penalize students for exploring or making mistakes during formative activities.
+
+---
+
+# PART E — FINAL MODULE ASSESSMENT
+
+Build a final assessment containing 10 questions.
+
+Use a combination of:
+
+- Multiple-choice questions.
+- True/false with explanation.
+- Numerical response.
+- Short-answer conceptual questions.
+- Applied real-world situations.
+
+Suggested assessment:
+
+Question 1:\
+What is a force?
+
+Correct concept: A push or pull resulting from an interaction.
+
+Question 2:\
+A box experiences 12 N to the right and 12 N to the left. What is the net force?
+
+Answer: 0 N.
+
+Question 3:\
+Which term describes an object's tendency to resist changes in velocity?
+
+Answer: Inertia.
+
+Question 4:\
+Which statement correctly describes Newton's First Law?
+
+Answer: An object remains at rest or continues moving with constant velocity unless acted upon by a nonzero net external force.
+
+Question 5:\
+A 4 kg object experiences a net force of 12 N. Calculate its acceleration.
+
+Answer: 3 m/s².
+
+Question 6:\
+If the net force doubles while mass remains constant, what happens to acceleration?
+
+Answer: It doubles.
+
+Question 7:\
+If mass doubles while net force remains constant, what happens to acceleration?
+
+Answer: It becomes half as large.
+
+Question 8:\
+A person pushes a wall. According to Newton's Third Law, what happens?
+
+Answer: The wall exerts an equal-magnitude force in the opposite direction on the person.
+
+Question 9:\
+Why do action-reaction forces not cancel each other?
+
+Answer: They act on different objects.
+
+Question 10:\
+A student pushes a 5 kg box with 15 N to the right. Friction acts with 5 N to the left. Calculate the acceleration and state its direction.
+
+Answer: 2 m/s² to the right.
+
+## Assessment functionality
+
+Implement:
+
+- One question at a time.
+- Clear progress indicator.
+- Answer selection.
+- Numerical input where appropriate.
+- Previous and next navigation.
+- Confirmation before submission.
+- Score calculation.
+- Answer review.
+- Explanations for correct answers.
+- Explanations for incorrect answers.
+- Retry option.
+- Final completion state.
+
+Use a suggested 70% formative mastery threshold, clearly described as a design choice rather than an externally prescribed course requirement.
+
+Do not prevent learners from continuing simply because they scored below the threshold.
+
+Show the score and encourage review of the relevant lessons.
+
+Store the assessment result locally if possible.
+
+Ensure the answer key is correct.
+
+---
+
+# PART F — VISUAL DESIGN SYSTEM
+
+Create a polished, professional, university-quality learning environment.
+
+Design direction:
+
+- Minimalist.
+- Editorial.
+- Academic.
+- Modern.
+- Calm.
+- Highly readable.
+- Functionally consistent.
+
+Avoid:
+
+- Generic AI-generated website aesthetics.
+- Excessive gradients.
+- Neon colors.
+- Purple-heavy palettes.
+- Excessive glassmorphism.
+- Unnecessary 3D illustrations.
+- Excessive rounded cards.
+- Oversized hero sections.
+- Marketing website layouts.
+- Unnecessary decorative animations.
+- Excessive emoji use.
+
+## Suggested palette
+
+Primary background: #FFFFFF
+
+Secondary background: #F5F7FA
+
+Primary text: #172033
+
+Secondary text: #64748B
+
+Primary accent: #2563EB
+
+Accent background: #EFF6FF
+
+Success: #15803D
+
+Warning: #B45309
+
+Error: #B91C1C
+
+Borders: #E2E8F0
+
+Use colors consistently and verify sufficient contrast.
+
+## Typography
+
+Use a readable sans-serif typeface.
+
+Preferred:
+
+- Inter, if bundled locally.
+- Otherwise system font stack.
+
+Use a clear hierarchy:
+
+- Module title.
+- Lesson title.
+- Section heading.
+- Body text.
+- Supporting notes.
+- Labels and captions.
+
+Body text should be comfortable to read, especially on mobile devices.
+
+## Layout
+
+Desktop:
+
+- Persistent lesson navigation sidebar.
+- Main reading and activity area.
+- Progress indicator.
+- Clear lesson navigation.
+
+Mobile:
+
+- Collapsible or accessible lesson navigation.
+- Single-column content.
+- Touch-friendly controls.
+- No horizontal overflow.
+- Readable equations and diagrams.
+- Appropriate spacing.
+
+Do not simply shrink the desktop layout.
+
+Redesign the layout for smaller screens.
+
+## Components
+
+Develop reusable components for:
+
+- Module header.
+- Lesson navigation.
+- Progress bar.
+- Lesson introduction.
+- Learning objectives.
+- Key concept cards.
+- Formula panels.
+- Worked examples.
+- Misconception callouts.
+- Interactive activities.
+- Quiz questions.
+- Feedback panels.
+- Previous/next navigation.
+- Completion summary.
+
+Keep the interface consistent across lessons.
+
+---
+
+# PART G — ACCESSIBILITY AND LOW-BANDWIDTH REQUIREMENTS
+
+Accessibility is a core requirement.
+
+Implement:
+
+1. Semantic HTML.
+2. Proper heading hierarchy.
+3. Keyboard navigation.
+4. Visible focus indicators.
+5. Accessible form labels.
+6. Appropriate ARIA attributes when necessary.
+7. Sufficient color contrast.
+8. Meaningful alt text for informative images.
+9. Text alternatives for diagrams.
+10. Clear feedback that does not rely on color alone.
+11. Reduced-motion support.
+12. Responsive text and layouts.
+
+Target WCAG 2.2 AA principles where practical.
+
+Low-bandwidth requirements:
+
+- No autoplay video.
+- No unnecessary large image files.
+- Prefer SVG illustrations.
+- No mandatory external fonts.
+- No heavy frontend frameworks.
+- No external APIs.
+- No unnecessary third-party libraries.
+- Keep JavaScript lightweight.
+- Ensure the core experience works when served locally.
+- Avoid relying on internet-hosted resources.
+
+The completed module should work without a backend.
+
+Progress may be saved using localStorage, but the module must still function if localStorage is unavailable.
+
+Provide a clear way to reset saved progress.
+
+Do not collect personal information.
+
+---
+
+# PART H — TECHNICAL IMPLEMENTATION
+
+Use vanilla HTML, CSS, and JavaScript.
+
+Suggested project structure:
+
+physics-module-1/\
+|\
+\|-- index.html\
+\|-- README.md\
+|\
+\|-- css/\
+\|   |-- styles.css\
+\|   |-- responsive.css\
+\|   |-- print.css\
+|\
+\|-- js/\
+\|   |-- app.js\
+\|   |-- navigation.js\
+\|   |-- progress.js\
+\|   |-- activities.js\
+\|   |-- assessment.js\
+\|   |-- simulator.js\
+|\
+\|-- assets/\
+\|   |-- illustrations/\
+\|   |-- diagrams/\
+|\
+\|-- docs/\
+\|-- instructional-design-rationale.pdf\
+\|-- interview-presentation.pdf\
+\|-- ai-disclosure.md
+
+You may adjust this structure when necessary, but keep the implementation organized and understandable.
+
+## JavaScript architecture
+
+Separate responsibilities:
+
+app.js:\
+Application initialization and shared state.
+
+navigation.js:\
+Lesson navigation and current lesson state.
+
+progress.js:\
+Completion tracking and local persistence.
+
+activities.js:\
+Formative activities and feedback.
+
+assessment.js:\
+Final assessment, scoring, review, and retry.
+
+simulator.js:\
+Net-force and Newton's Second Law calculations.
+
+Avoid putting the entire application in one giant script.
+
+Avoid unnecessary abstractions.
+
+Avoid adding a framework just for the sake of using one.
+
+## Progress tracking
+
+Track:
+
+- Completed lessons.
+- Current lesson.
+- Completed activities.
+- Assessment attempts.
+- Latest assessment score.
+
+Display overall completion percentage.
+
+Do not mark a lesson complete simply because a learner opens it. Require a meaningful completion action, such as completing its knowledge check or selecting a completion button after the lesson.
+
+Allow students to revisit completed lessons.
+
+Use localStorage safely with error handling.
+
+---
+
+# PART I — DOCUMENTATION
+
+Create a separate instructional design rationale as a polished PDF.
+
+Suggested title:
+
+"Instructional Design and Development Rationale — Module 1"
+
+The document must include:
+
+1. Project overview.
+2. Learner profile.
+3. Learning objectives.
+4. Instructional sequence.
+5. Learning design principles.
+6. Rationale for each interactive activity.
+7. Assessment strategy.
+8. Learning objective and assessment alignment matrix.
+9. Accessibility considerations.
+10. Low-bandwidth considerations.
+11. Technical architecture.
+12. Limitations and future improvements.
+13. AI tools disclosure.
+
+Explain why each major design decision supports independent learning.
+
+Include an objective-to-activity-to-assessment mapping table.
+
+Do not make unsupported claims about learner outcomes or actual usability testing.
+
+Clearly distinguish implemented features from proposed future improvements.
+
+---
+
+# PART J — INTERVIEW PRESENTATION
+
+Create a concise, professional presentation of approximately 7–9 slides.
+
+Suggested structure:
+
+Slide 1: Project title and course overview.
+
+Slide 2: Learner needs and instructional challenges.
+
+Slide 3: Learning objectives and instructional structure.
+
+Slide 4: User experience and visual design decisions.
+
+Slide 5: Interactive learning activities.
+
+Slide 6: Assessment and feedback strategy.
+
+Slide 7: Accessibility and low-bandwidth implementation.
+
+Slide 8: Technical architecture and scalability.
+
+Slide 9: Reflection, limitations, and future improvements.
+
+Keep slides visually clean and avoid text-heavy paragraphs.
+
+Include presenter notes or a separate demonstration script.
+
+Prepare a 5–10-minute demonstration sequence.
+
+---
+
+# PART K — QUALITY ASSURANCE
+
+Before declaring the project complete, test the following.
+
+## Functional tests
+
+- All navigation controls work.
+- All lessons load correctly.
+- Previous and next lesson navigation works.
+- Progress tracking updates correctly.
+- Progress persists after refreshing.
+- Progress reset works.
+- Net-force calculations are correct.
+- Newton's Second Law simulator calculates correctly.
+- Invalid mass inputs are rejected.
+- All activities accept and evaluate answers correctly.
+- Feedback is displayed correctly.
+- Assessment scoring is correct.
+- Answer review works.
+- Retry functionality works.
+- Completion state is correct.
+
+## Physics validation
+
+Check every formula, unit, direction, and answer.
+
+Important:
+
+- Force is measured in newtons.
+- Mass is measured in kilograms.
+- Acceleration is measured in m/s².
+- Net force is the vector sum of forces.
+- Acceleration points in the direction of net force.
+- Balanced forces mean zero acceleration, not necessarily zero velocity.
+- Inertia is not a force.
+- Newton's Third Law pairs act on different objects.
+
+## Responsive tests
+
+Test:
+
+- 360px mobile viewport.
+- 390px mobile viewport.
+- 768px tablet viewport.
+- 1024px laptop viewport.
+- 1440px desktop viewport.
+
+Check for:
+
+- Horizontal overflow.
+- Clipped content.
+- Unreadable equations.
+- Broken navigation.
+- Inaccessible controls.
+- Overlapping elements.
+
+## Browser tests
+
+Test in Chromium-based browsers and Firefox if available.
+
+Check console errors.
+
+## Final review
+
+Do not leave:
+
+- Placeholder text.
+- Lorem ipsum.
+- Fake buttons.
+- Empty sections.
+- Broken links.
+- Unexplained formulas.
+- Unfinished assessments.
+- Missing document files.
+- Unsupported accessibility claims.
+
+---
+
+# PART L — EXECUTION STRATEGY
+
+Work in the following order.
+
+Phase 1:\
+Inspect the project directory and establish the implementation structure.
+
+Phase 2:\
+Create the complete educational content and instructional sequence.
+
+Phase 3:\
+Implement the visual design system and responsive layout.
+
+Phase 4:\
+Implement all five interactive activities.
+
+Phase 5:\
+Implement navigation, persistence, progress, and assessment.
+
+Phase 6:\
+Create the instructional design rationale PDF.
+
+Phase 7:\
+Create the interview presentation and demonstration script.
+
+Phase 8:\
+Perform functional, mathematical, accessibility, and responsive quality assurance.
+
+Phase 9:\
+Write the README with instructions for running and reviewing the module.
+
+Prioritize correctness and completeness over unnecessary visual complexity.
+
+Do not stop after creating a visual mockup.
+
+Do not ask for approval after every phase. Make reasonable decisions independently, continue implementation, and report any genuine blocker.
+
+If you have access to browser automation or a browser preview tool, use it to test the completed experience.
+
+If you can run a local server, test the application through that server.
+
+Use available PDF and presentation-generation tools when appropriate.
+
+Do not claim to have tested anything that you have not actually tested.
+
+---
+
+# PART M — FINAL ACCEPTANCE CRITERIA
+
+The project is considered complete only when:
+
+[ ] Module 1 contains all required scientific concepts.
+
+[ ] All six learning objectives are addressed.
+
+[ ] All five interactive activities are implemented.
+
+[ ] The final assessment has 10 functional questions.
+
+[ ] Answers and explanations are scientifically accurate.
+
+[ ] Navigation and progress tracking work.
+
+[ ] The module is responsive.
+
+[ ] Accessibility considerations are implemented.
+
+[ ] The core module works without external network dependencies.
+
+[ ] The instructional design rationale PDF is generated.
+
+[ ] The interview presentation PDF is generated.
+
+[ ] AI usage is disclosed accurately.
+
+[ ] README documentation is included.
+
+[ ] The project has been tested.
+
+[ ] All final deliverables are present and accessible.
+
+At completion, provide a concise report containing:
+
+1. What was built.
+2. Project directory and file structure.
+3. Implemented interactions.
+4. Testing performed and results.
+5. Known limitations.
+6. Location of each final deliverable.
+7. Any remaining issues.
+
+## FINAL INSTRUCTION
+
+Think like an educator first, a designer second, and a developer third.
+
+The finished product must demonstrate that you understand how to transform source educational materials into an effective, accessible, engaging, and technically sound self-paced learning experience.
+
+Build something that a real secondary-level student could independently learn from, and that a university eLearning development team would be comfortable reviewing as a serious prototype.
+
+# **4. Additional design direction for the agent**
+
+The master prompt defines functionality. These are the visual references I'd give the agent so it doesn't interpret "modern" as a generic dashboard.
+
+## **5. Exact interface direction**
+
+I'd use a two-panel learning interface on desktop.
+
+[New Simpler Interface for Corsmed’s LMS](https://images.openai.com/static-rsc-4/r8BnjJra2dfcKEfHQamrPShIEW_Q-Hi9RoFLFHqyVWOt-KM8D682Y6nCii5pz9SoTDr19Num3_Q4OImbea3FaoFB-fIKMGW1E_NbOr7eSW2rVvNsug7FGOaFUm6sUxeAWxRcD6la_cf_Aclg6T4KPTh5CVq_Qlrttz2a3j_0CJU?purpose=inline)
+
+[corsmed.com](https://www.corsmed.com/news/new-simpler-interface-for-corsmeds-lms?utm_source=chatgpt.com)
+
+The layout should have:
+
+**Left navigation**
+
+- Course title and module number.
+- Lesson list.
+- Completion indicators.
+- Current lesson highlight.
+- Overall module progress.
+
+**Main learning area**
+
+- Breadcrumb navigation.
+- Lesson heading.
+- Estimated lesson duration.
+- Learning objectives.
+- Educational content.
+- Diagrams and worked examples.
+- Interactive activities.
+- Knowledge checks.
+- Previous and next buttons.
+
+**Mobile**
+
+- Replace the permanent sidebar with a menu drawer.
+- Keep the lesson title and progress visible.
+- Put the learning content in a single column.
+- Make all controls comfortable to tap.
+
+### **Important: Don't let the agent overengineer it**
+
+I'd explicitly avoid these unnecessary additions:
+
+- User registration and login.
+- Admin dashboard.
+- Cloud database.
+- Student management system.
+- AI chatbot tutor.
+- Complex animations.
+- Payment integrations.
+- Backend APIs.
+
+None of those are required by the assessment.
+
+A student should be able to open `index.html` or access the module through a simple local server and start learning.
+
+## **6. Give your agent these additional instructions**
+
+After providing the master prompt, give it this second instruction. This is intended to prevent the usual coding-agent problem: building a beautiful homepage and leaving the actual product unfinished.
+
+## IMPLEMENTATION PRIORITIES AND DESIGN GUARDRAILS
+
+Before coding, carefully review the complete project specification.
+
+I want you to prioritize the actual learning experience.
+
+### Priority 1: Content completeness
+
+Every lesson must contain real educational content, not placeholder sections.
+
+Write explanations appropriate for secondary-level learners. Include examples, formulas, diagrams, misconceptions, and knowledge checks.
+
+### Priority 2: Functional learning interactions
+
+All activities must work. Implement real calculations and answer validation.
+
+Do not simulate functionality with static screenshots.
+
+### Priority 3: Visual quality
+
+Use a consistent academic design system. Maintain excellent typography, spacing, visual hierarchy, and responsive behavior.
+
+Avoid making every section a separate oversized rounded card. Use editorial layouts, dividers, whitespace, and purposeful visual grouping.
+
+### Priority 4: Technical reliability
+
+Keep the application lightweight, dependency-free, and easy to run.
+
+### Priority 5: Supporting deliverables
+
+Generate the rationale and presentation only after the module's actual content and functionality are established.
+
+### Development rules
+
+1. Inspect the existing working directory before creating or overwriting files.
+2. Preserve useful existing work.
+3. Implement incrementally.
+4. Test calculations independently.
+5. Verify every assessment answer.
+6. Test all interactions.
+7. Check mobile layouts.
+8. Generate the PDFs and verify they open correctly.
+9. Keep all final files organized.
+10. Maintain a list of outstanding issues until resolved.
+
+Do not stop at a design mockup or initial implementation.
+
+Your definition of done is the complete set of deliverables, not the first successful browser preview.
+
+Make independent implementation decisions when the specification leaves room for judgment. Document meaningful decisions in the rationale.
+
+# **7. How I'd allocate development effort**
+
+Don't spend 70% of the time making the homepage look good. The learning content and actual interactions are what matter.
+
+**Recommended effort allocation**
+
+Educational content and instructional design
+
+**25%**
+
+Interactive module development
+
+**35%**
+
+Visual design and responsiveness
+
+**20%**
+
+Documentation and presentation
+
+**10%**
+
+Testing and quality assurance
+
+**10%**
+
+# **8. What you should personally review before submission**
+
+Your coding agent can build the application, but you should personally verify these things. This is what will help you defend your work during the interview.
+
+**Submission readiness**
+
+0/13 completed
+
+I can complete the entire module as a student without assistance.
+
+All six learning objectives are covered.
+
+The five interactive activities actually work.
+
+The physics explanations and calculations are correct.
+
+Every quiz provides useful explanatory feedback.
+
+The final assessment has 10 complete questions.
+
+Progress tracking works after refreshing the page.
+
+The module works on a mobile-sized screen.
+
+The module does not depend on external services to function.
+
+The PDF rationale explains my design decisions.
+
+The presentation demonstrates the actual implementation.
+
+The AI disclosure accurately describes the tools used.
+
+I can explain why I chose each major instructional design decision.
+
+Reset checklist
+
+# **9. My recommended workflow with your coding agent**
+
+Since you use OpenCode and oh-my-pi, I'd do this:
+
+1. Create a dedicated project directory, separate from your existing production projects.
+2. Start your coding agent in that directory.
+3. Give it the master project brief first.
+4. Let it inspect its available tools and determine how to generate the PDFs and presentation.
+5. Give it the implementation priorities.
+6. Have it work through the deliverables and test the actual application.
+7. Review the finished product yourself before submission.
+
+**One last instruction I'd give it:**
+
+> Do not optimize for how impressive the source code looks. Optimize for how effectively a secondary-level student can learn Newton's laws independently. I will be evaluating this as an actual educational product, not just a frontend portfolio piece.
+
+## **What I want you to aim for**
+
+# **A complete learning experience.**
+
+[Newton's Second Law — Free Interactive GCSE Physics Simulation | SimpliPhys](https://images.openai.com/static-rsc-4/QWQkSA5rCi3U4kgMChe9tYxNrFSqwz7YAPJZQVnA1anpkdxbZqMk5ofuaaT6MqAadwP9BCysn6h1SiWiTw_X6OJqSnXOOtdIosHv0fK-H7AKtlVn5nFYVVc0sphcYn_v2JEc52FSA91ETlKqkhlDA_TM8BBcRwBEV-fLK2i9BCo?purpose=inline)
+
+[F = MA — Phenomena](https://images.openai.com/static-rsc-4/lIrhmYksQB8wJ2dRsZThJrr_TtB86rYAVwdoPVfT0MsXFdCFiiQvGRNqVgqj_QxewiWglLq8bQYVUZtBxsi7B1PHSa3t81C6cHWl2DhYT2o--cthofJBiKGXARXco0TfgYqNIuOMhnJ_vwpfrUwLL--RQssHUQX_X-2mGdKgihs?purpose=inline)
+
+[Akindi Student Guide - Educational Technology - Toronto Metropolitan University (TMU)](https://images.openai.com/static-rsc-4/eWOIxNHpfo-EMgXXvUTxJ3vpy6eLoWt-M02QMbQjsGbHLcx14YYHmICGwFUGai0SfBFBTJx2G4AgyQ5Uy_fTxfvNXIE2toDVt2Jqxm5zbIdOop_14DfSmzjfwLrs0aWHCcpZK57vXieITpzexMqOP0Cu2c5D-vzk5VrPcITvDPU?purpose=inline)
+
+10
+
+**The finished submission should demonstrate:**
+
+- You can develop educational content.
+- You understand instructional design.
+- You can create effective learning interactions.
+- You can build accessible responsive interfaces.
+- You can translate educational requirements into working software.
+- You can document and defend your decisions.
+
+My biggest advice: **Make the actual learning experience exceptional before polishing the presentation.**
+
+You already have software development experience. This assessment is your chance to demonstrate that you can apply those skills to a different discipline.
+
+I want the interviewer to open your work, try the physics simulator, answer a quiz, review the feedback, navigate between lessons, and think:
+
+*"This person understands what it takes to develop an online learning module."*

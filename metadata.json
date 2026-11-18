@@ -1,0 +1,6 @@
+{
+  "name": "Physics in Everyday Life — Module 1: Forces and Newton's Laws",
+  "description": "Self-paced interactive secondary-level physics learning module covering forces, net force, inertia, and Newton's three laws of motion.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
