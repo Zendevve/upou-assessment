@@ -66,7 +66,7 @@ export const InertiaScenario: React.FC<InertiaScenarioProps> = ({ onCompleted })
       className="my-8 rounded-md border border-[#CBD5E1] bg-white p-5 sm:p-6"
     >
       <div className="border-b border-[#E2E8F0] pb-4">
-        <p className="text-xs font-semibold text-[#2563EB]">Interactive Activity 2</p>
+        <p className="text-xs font-semibold tracking-[0.01em] text-[#2563EB]">Interactive Activity 2</p>
         <h3 id="activity-2-title" className="mt-1 text-lg font-semibold text-[#172033]">
           Inertia Scenario: The Braking Bus
         </h3>
@@ -81,7 +81,7 @@ export const InertiaScenario: React.FC<InertiaScenarioProps> = ({ onCompleted })
           type="button"
           onClick={() => setPhase('cruising')}
           aria-pressed={phase === 'cruising'}
-          className={`rounded-md border px-3.5 py-2 text-xs sm:text-sm font-medium min-h-[40px] ${
+          className={`tactile-press rounded-md border px-3.5 py-2 text-xs sm:text-sm font-medium min-h-[40px] ${
             phase === 'cruising'
               ? 'border-[#2563EB] bg-[#EFF6FF] text-[#1E3A8A]'
               : 'border-[#CBD5E1] bg-[#F8FAFC] text-[#334155] hover:bg-slate-100'
@@ -93,7 +93,7 @@ export const InertiaScenario: React.FC<InertiaScenarioProps> = ({ onCompleted })
           type="button"
           onClick={() => setPhase('braking')}
           aria-pressed={phase === 'braking'}
-          className={`rounded-md border px-3.5 py-2 text-xs sm:text-sm font-medium min-h-[40px] ${
+          className={`tactile-press rounded-md border px-3.5 py-2 text-xs sm:text-sm font-medium min-h-[40px] ${
             phase === 'braking'
               ? 'border-[#2563EB] bg-[#EFF6FF] text-[#1E3A8A]'
               : 'border-[#CBD5E1] bg-[#F8FAFC] text-[#334155] hover:bg-slate-100'
@@ -119,9 +119,9 @@ export const InertiaScenario: React.FC<InertiaScenarioProps> = ({ onCompleted })
             return (
               <label
                 key={opt.id}
-                className={`flex items-start gap-3 rounded-md border p-3.5 cursor-pointer transition-colors min-h-[44px] ${
+                className={`tactile-card flex items-start gap-3 rounded-md border p-3.5 cursor-pointer min-h-[44px] ${
                   isSelected
-                    ? 'border-[#2563EB] bg-[#EFF6FF]'
+                    ? 'border-[#2563EB] bg-[#EFF6FF] shadow-[0_1px_2px_rgba(37,99,235,0.08)]'
                     : 'border-[#E2E8F0] bg-[#F8FAFC] hover:bg-slate-100'
                 }`}
               >
@@ -146,7 +146,7 @@ export const InertiaScenario: React.FC<InertiaScenarioProps> = ({ onCompleted })
           <button
             type="submit"
             disabled={!selectedId}
-            className="rounded-md bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-[#1D4ED8] disabled:opacity-45 disabled:cursor-not-allowed min-h-[44px]"
+            className="tactile-press rounded-md bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-[#1D4ED8] disabled:opacity-45 disabled:cursor-not-allowed min-h-[44px]"
           >
             Check Explanation
           </button>
@@ -155,7 +155,7 @@ export const InertiaScenario: React.FC<InertiaScenarioProps> = ({ onCompleted })
             <button
               type="button"
               onClick={handleRetry}
-              className="inline-flex items-center gap-1.5 rounded-md border border-[#CBD5E1] bg-white px-4 py-2 text-sm font-medium text-[#172033] hover:bg-slate-50 min-h-[44px]"
+              className="tactile-press inline-flex items-center gap-1.5 rounded-md border border-[#CBD5E1] bg-white px-4 py-2 text-sm font-medium text-[#172033] hover:bg-slate-50 min-h-[44px]"
             >
               <RotateCcw className="h-4 w-4" aria-hidden="true" />
               Try Another Choice
@@ -166,9 +166,10 @@ export const InertiaScenario: React.FC<InertiaScenarioProps> = ({ onCompleted })
 
       {submitted && selectedOption && (
         <div
+          key={`${selectedOption.id}-${isCorrect ? 'ok' : 'no'}`}
           role="status"
           aria-live="polite"
-          className={`mt-4 rounded-md border p-4 text-sm flex items-start gap-3 ${
+          className={`surface-enter mt-4 rounded-md border p-4 text-sm flex items-start gap-3 ${
             isCorrect
               ? 'border-[#BBF7D0] bg-[#F0FDF4] text-[#14532D]'
               : 'border-[#FECACA] bg-[#FEF2F2] text-[#7F1D1D]'

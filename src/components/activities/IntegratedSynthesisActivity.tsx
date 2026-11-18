@@ -49,7 +49,7 @@ export const IntegratedSynthesisActivity: React.FC<IntegratedSynthesisActivityPr
       className="my-8 rounded-md border border-[#CBD5E1] bg-white p-5 sm:p-6"
     >
       <div className="border-b border-[#E2E8F0] pb-4">
-        <p className="text-xs font-semibold text-[#2563EB]">Guided Synthesis Practice</p>
+        <p className="text-xs font-semibold tracking-[0.01em] text-[#2563EB]">Guided Synthesis Practice</p>
         <h3 id="synthesis-activity-title" className="mt-1 text-lg font-semibold text-[#172033]">
           Step-by-Step Analysis: Applying All Concepts Together
         </h3>
@@ -190,14 +190,14 @@ export const IntegratedSynthesisActivity: React.FC<IntegratedSynthesisActivityPr
         <div className="flex flex-wrap items-center gap-3 pt-2">
           <button
             type="submit"
-            className="rounded-md bg-[#2563EB] px-5 py-2.5 text-sm font-medium text-white hover:bg-[#1D4ED8] min-h-[44px]"
+            className="tactile-press rounded-md bg-[#2563EB] px-5 py-2.5 text-sm font-medium text-white hover:bg-[#1D4ED8] min-h-[44px]"
           >
             Check 5-Step Solution
           </button>
           <button
             type="button"
             onClick={handleReset}
-            className="inline-flex items-center gap-1.5 rounded-md border border-[#CBD5E1] bg-white px-4 py-2.5 text-sm font-medium text-[#334155] hover:bg-slate-50 min-h-[44px]"
+            className="tactile-press inline-flex items-center gap-1.5 rounded-md border border-[#CBD5E1] bg-white px-4 py-2.5 text-sm font-medium text-[#334155] hover:bg-slate-50 min-h-[44px]"
           >
             <RotateCcw className="h-4 w-4" aria-hidden="true" />
             Reset Steps
@@ -207,9 +207,10 @@ export const IntegratedSynthesisActivity: React.FC<IntegratedSynthesisActivityPr
 
       {submitted && (
         <div
+          key={allCorrect ? 'synth-ok' : 'synth-err'}
           role="status"
           aria-live="polite"
-          className={`mt-5 rounded-md border p-4 text-sm flex items-start gap-3 ${
+          className={`surface-enter mt-5 rounded-md border p-4 text-sm flex items-start gap-3 ${
             allCorrect
               ? 'border-[#BBF7D0] bg-[#F0FDF4] text-[#14532D]'
               : 'border-[#FECACA] bg-[#FEF2F2] text-[#7F1D1D]'

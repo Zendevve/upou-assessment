@@ -33,9 +33,12 @@ export const LessonFooterNav: React.FC<LessonFooterNavProps> = ({
             <button
               type="button"
               onClick={() => onNavigate(prevItem.id)}
-              className="inline-flex items-center gap-2 rounded-md border border-[#CBD5E1] bg-white px-4 py-2.5 text-sm font-medium text-[#172033] hover:bg-[#F5F7FA] min-h-[44px]"
+              className="group tactile-press inline-flex items-center gap-2 rounded-md border border-[#CBD5E1] bg-white px-4 py-2.5 text-sm font-medium text-[#172033] hover:bg-[#F5F7FA] min-h-[44px]"
             >
-              <ArrowLeft className="h-4 w-4 text-[#475569]" aria-hidden="true" />
+              <ArrowLeft
+                className="hover-nudge-left h-4 w-4 text-[#475569] transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)]"
+                aria-hidden="true"
+              />
               <span>Previous: {prevItem.shortLabel}</span>
             </button>
           ) : (
@@ -48,13 +51,18 @@ export const LessonFooterNav: React.FC<LessonFooterNavProps> = ({
             <button
               type="button"
               onClick={onMarkComplete}
-              className={`inline-flex items-center gap-2 rounded-md px-4 py-2.5 text-sm font-medium min-h-[44px] border ${
+              className={`tactile-press inline-flex items-center gap-2 rounded-md px-4 py-2.5 text-sm font-medium min-h-[44px] border ${
                 isCompleted
                   ? 'border-[#BBF7D0] bg-[#F0FDF4] text-[#15803D]'
                   : 'border-[#CBD5E1] bg-[#F5F7FA] text-[#172033] hover:bg-slate-200/70'
               }`}
             >
-              <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
+              <CheckCircle2
+                className={`h-4 w-4 transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] ${
+                  isCompleted ? 'scale-105' : 'scale-100'
+                }`}
+                aria-hidden="true"
+              />
               <span>{isCompleted ? 'Lesson Completed' : 'Mark Lesson Complete'}</span>
             </button>
           )}
@@ -63,10 +71,13 @@ export const LessonFooterNav: React.FC<LessonFooterNavProps> = ({
             <button
               type="button"
               onClick={() => onNavigate(nextItem.id)}
-              className="inline-flex items-center gap-2 rounded-md bg-[#2563EB] px-5 py-2.5 text-sm font-medium text-white hover:bg-[#1D4ED8] min-h-[44px]"
+              className="group tactile-press inline-flex items-center gap-2 rounded-md bg-[#2563EB] px-5 py-2.5 text-sm font-medium text-white hover:bg-[#1D4ED8] min-h-[44px]"
             >
               <span>Next: {nextItem.shortLabel}</span>
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              <ArrowRight
+                className="hover-nudge-right h-4 w-4 transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)]"
+                aria-hidden="true"
+              />
             </button>
           )}
         </div>

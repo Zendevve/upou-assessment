@@ -8,6 +8,11 @@
   :root {
     --font-sans: "Plus Jakarta Sans Variable", "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+    /* Emil Kowalski custom easing tokens */
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+    --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
   }
 
   html {
@@ -16,7 +21,9 @@
     background-color: #ffffff;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    font-optical-sizing: auto;
     scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
   }
 
   body {
@@ -24,11 +31,29 @@
     background-color: #ffffff;
     color: #172033;
     line-height: 1.65;
+    letter-spacing: 0em;
   }
 
-  h1, h2, h3, h4 {
+  /* Apple optical sizing: tighter tracking & leading on display headings */
+  h1 {
     color: #172033;
     text-wrap: balance;
+    letter-spacing: -0.022em;
+    line-height: 1.15;
+  }
+
+  h2 {
+    color: #172033;
+    text-wrap: balance;
+    letter-spacing: -0.015em;
+    line-height: 1.25;
+  }
+
+  h3, h4 {
+    color: #172033;
+    text-wrap: balance;
+    letter-spacing: -0.008em;
+    line-height: 1.35;
   }
 
   code, pre, .font-mono {
@@ -45,7 +70,130 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Custom accessible range slider */
+/* Tactile press feedback on pointer-down (instantaneous feel) */
+.tactile-press {
+  transition:
+    transform 140ms var(--ease-out),
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease,
+    box-shadow 150ms var(--ease-out);
+  touch-action: manipulation;
+}
+
+.tactile-press:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.tactile-card {
+  transition:
+    transform 150ms var(--ease-out),
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 160ms var(--ease-out);
+  touch-action: manipulation;
+}
+
+.tactile-card:active {
+  transform: scale(0.988);
+}
+
+/* Gate hover elevations behind fine pointer capability so touch taps never stick */
+@media (hover: hover) and (pointer: fine) {
+  .hover-lift:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+
+  .hover-lift:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+
+  .group:hover .hover-nudge-right {
+    transform: translateX(2px);
+  }
+
+  .group:hover .hover-nudge-left {
+    transform: translateX(-2px);
+  }
+}
+
+/* Non-blocking subtle GPU entrance for feedback banners and panels (never scale(0)) */
+.surface-enter {
+  animation: surfaceReveal 200ms var(--ease-out) both;
+}
+
+@keyframes surfaceReveal {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Crisp screen/question transitions */
+.screen-enter {
+  animation: screenReveal 190ms var(--ease-out) both;
+}
+
+@keyframes screenReveal {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.step-enter-forward {
+  animation: stepForward 170ms var(--ease-out) both;
+}
+
+.step-enter-backward {
+  animation: stepBackward 170ms var(--ease-out) both;
+}
+
+@keyframes stepForward {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes stepBackward {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Subtle non-blocking mount stagger for Welcome objectives (30-45ms spacing) */
+.stagger-item {
+  animation: surfaceReveal 220ms var(--ease-out) both;
+}
+
+/* Translucent floating chrome (Apple materials & vibrancy) */
+.translucent-chrome {
+  background-color: rgba(255, 255, 255, 0.78);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.85);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.65) inset, 0 4px 16px -6px rgba(15, 23, 42, 0.08);
+}
+
+/* Custom accessible range slider with tactile thumb feedback */
 input[type="range"].physics-slider {
   -webkit-appearance: none;
   appearance: none;
@@ -53,6 +201,7 @@ input[type="range"].physics-slider {
   background: #e2e8f0;
   border-radius: 3px;
   cursor: pointer;
+  touch-action: pan-y;
 }
 
 input[type="range"].physics-slider::-webkit-slider-thumb {
@@ -63,8 +212,9 @@ input[type="range"].physics-slider::-webkit-slider-thumb {
   border-radius: 50%;
   background: #2563eb;
   border: 2px solid #ffffff;
-  box-shadow: 0 1px 3px rgba(23, 32, 51, 0.25);
+  box-shadow: 0 1px 4px rgba(23, 32, 51, 0.28);
   cursor: pointer;
+  transition: transform 140ms var(--ease-out), background-color 140ms ease, box-shadow 140ms var(--ease-out);
 }
 
 input[type="range"].physics-slider::-moz-range-thumb {
@@ -73,18 +223,82 @@ input[type="range"].physics-slider::-moz-range-thumb {
   border-radius: 50%;
   background: #2563eb;
   border: 2px solid #ffffff;
-  box-shadow: 0 1px 3px rgba(23, 32, 51, 0.25);
+  box-shadow: 0 1px 4px rgba(23, 32, 51, 0.28);
   cursor: pointer;
+  transition: transform 140ms var(--ease-out), background-color 140ms ease, box-shadow 140ms var(--ease-out);
 }
 
+@media (hover: hover) and (pointer: fine) {
+  input[type="range"].physics-slider:hover::-webkit-slider-thumb {
+    transform: scale(1.1);
+    background: #1d4ed8;
+  }
+  input[type="range"].physics-slider:hover::-moz-range-thumb {
+    transform: scale(1.1);
+    background: #1d4ed8;
+  }
+}
+
+input[type="range"].physics-slider:active::-webkit-slider-thumb {
+  transform: scale(1.16);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.16), 0 2px 6px rgba(23, 32, 51, 0.3);
+}
+
+input[type="range"].physics-slider:active::-moz-range-thumb {
+  transform: scale(1.16);
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.16), 0 2px 6px rgba(23, 32, 51, 0.3);
+}
+
+/* Apple Accessibility Signal 1: prefers-reduced-motion — replace movement with gentle opacity cross-fade */
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
   }
+
+  .surface-enter,
+  .screen-enter,
+  .step-enter-forward,
+  .step-enter-backward,
+  .stagger-item {
+    animation: fadeOnly 160ms ease both !important;
+  }
+
+  .tactile-press:active:not(:disabled),
+  .tactile-card:active,
+  .hover-lift:hover:not(:disabled) {
+    transform: none !important;
+  }
+
   *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-property: opacity, background-color, border-color, color !important;
+    transition-duration: 140ms !important;
+  }
+}
+
+@keyframes fadeOnly {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Apple Accessibility Signal 2: prefers-reduced-transparency — solid surface, no blur */
+@media (prefers-reduced-transparency: reduce) {
+  .translucent-chrome {
+    background-color: #ffffff;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    border-bottom: 1px solid #cbd5e1;
+  }
+}
+
+/* Apple Accessibility Signal 3: prefers-contrast: more — crisper definition */
+@media (prefers-contrast: more) {
+  .translucent-chrome {
+    background-color: #ffffff;
+    border-bottom: 2px solid #172033;
   }
 }
 

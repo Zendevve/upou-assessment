@@ -18,10 +18,10 @@ export const LessonHeader: React.FC<LessonHeaderProps> = ({
   isCompleted,
 }) => (
   <header className="border-b border-[#E2E8F0] pb-6">
-    <p className="text-xs font-medium text-[#64748B]">
+    <p className="text-xs font-medium tracking-[0.01em] text-[#64748B]">
       {COURSE_INFO.moduleLabel} <span aria-hidden="true">/</span> {breadcrumbLabel}
     </p>
-    <h1 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-[#172033]">
+    <h1 className="mt-2 text-2xl sm:text-3xl font-bold text-[#172033]">
       {title}
     </h1>
     <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm text-[#64748B]">
@@ -31,7 +31,7 @@ export const LessonHeader: React.FC<LessonHeaderProps> = ({
       {isCompleted && (
         <>
           <span aria-hidden="true">·</span>
-          <span className="inline-flex items-center gap-1 font-medium text-[#15803D]">
+          <span className="surface-enter inline-flex items-center gap-1 font-medium text-[#15803D]">
             <CheckCircle2 className="h-3.5 w-3.5" aria-hidden="true" />
             Completed
           </span>
@@ -49,7 +49,7 @@ export const ObjectiveBox: React.FC<{ objective: string; label?: string }> = ({
     aria-label={label}
     className="mt-6 rounded-md border border-[#BFDBFE] bg-[#EFF6FF] px-5 py-4"
   >
-    <p className="text-xs font-semibold tracking-tight text-[#1E40AF]">
+    <p className="text-xs font-semibold tracking-[0.01em] text-[#1E40AF]">
       {label}
     </p>
     <p className="mt-1 text-sm sm:text-base font-medium text-[#172033]">
@@ -65,7 +65,7 @@ export const FormulaPanel: React.FC<{
   note?: string;
 }> = ({ title, formula, variables, note }) => (
   <section className="my-6 rounded-md border border-[#E2E8F0] bg-[#F5F7FA] p-5">
-    <p className="text-xs font-semibold text-[#475569]">{title}</p>
+    <p className="text-xs font-semibold tracking-[0.01em] text-[#475569]">{title}</p>
     <p className="mt-2 font-mono text-xl sm:text-2xl font-semibold text-[#172033] tracking-tight">
       {formula}
     </p>
@@ -118,7 +118,7 @@ export const MisconceptionCallout: React.FC<{
     <div className="flex items-start gap-3">
       <AlertTriangle className="h-5 w-5 text-[#B45309] shrink-0 mt-0.5" aria-hidden="true" />
       <div>
-        <p className="text-xs font-semibold text-[#92400E]">{title}</p>
+        <p className="text-xs font-semibold tracking-[0.01em] text-[#92400E]">{title}</p>
         <p className="mt-1 text-sm sm:text-base font-semibold text-[#172033]">
           “{statement}”
         </p>
@@ -201,7 +201,7 @@ export const KnowledgeCheck: React.FC<KnowledgeCheckProps> = ({
           </h3>
         </div>
         {alreadyPassed && (
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-[#15803D]">
+          <span className="surface-enter inline-flex items-center gap-1 text-xs font-medium text-[#15803D]">
             <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
             Check completed
           </span>
@@ -218,9 +218,9 @@ export const KnowledgeCheck: React.FC<KnowledgeCheckProps> = ({
             return (
               <label
                 key={opt.id}
-                className={`flex items-start gap-3 rounded-md border p-3.5 cursor-pointer transition-colors min-h-[44px] ${
+                className={`tactile-card flex items-start gap-3 rounded-md border p-3.5 cursor-pointer min-h-[44px] ${
                   isSelected
-                    ? 'border-[#2563EB] bg-[#EFF6FF]'
+                    ? 'border-[#2563EB] bg-[#EFF6FF] shadow-[0_1px_2px_rgba(37,99,235,0.08)]'
                     : 'border-[#E2E8F0] bg-white hover:bg-slate-50'
                 }`}
               >
@@ -245,7 +245,7 @@ export const KnowledgeCheck: React.FC<KnowledgeCheckProps> = ({
           <button
             type="submit"
             disabled={!selectedId}
-            className="rounded-md bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-[#1D4ED8] disabled:opacity-45 disabled:cursor-not-allowed min-h-[44px]"
+            className="tactile-press rounded-md bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-[#1D4ED8] disabled:opacity-45 disabled:cursor-not-allowed min-h-[44px]"
           >
             Check Answer
           </button>
@@ -254,7 +254,7 @@ export const KnowledgeCheck: React.FC<KnowledgeCheckProps> = ({
             <button
               type="button"
               onClick={handleRetry}
-              className="inline-flex items-center gap-1.5 rounded-md border border-[#CBD5E1] bg-white px-4 py-2 text-sm font-medium text-[#172033] hover:bg-slate-50 min-h-[44px]"
+              className="tactile-press inline-flex items-center gap-1.5 rounded-md border border-[#CBD5E1] bg-white px-4 py-2 text-sm font-medium text-[#172033] hover:bg-slate-50 min-h-[44px]"
             >
               <RotateCcw className="h-4 w-4" aria-hidden="true" />
               Try Again
@@ -265,9 +265,10 @@ export const KnowledgeCheck: React.FC<KnowledgeCheckProps> = ({
 
       {submitted && selectedOption && (
         <div
+          key={`${selectedOption.id}-${isCorrect ? 'ok' : 'no'}`}
           role="status"
           aria-live="polite"
-          className={`mt-4 rounded-md border p-4 text-sm flex items-start gap-3 ${
+          className={`surface-enter mt-4 rounded-md border p-4 text-sm flex items-start gap-3 ${
             isCorrect
               ? 'border-[#BBF7D0] bg-[#F0FDF4] text-[#14532D]'
               : 'border-[#FECACA] bg-[#FEF2F2] text-[#7F1D1D]'

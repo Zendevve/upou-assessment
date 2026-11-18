@@ -39,11 +39,17 @@ export const AssessmentScreen: React.FC<AssessmentScreenProps> = ({
 }) => {
   const [viewMode, setViewMode] = useState<ViewMode>(latestAssessment ? 'results' : 'taking');
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [stepDir, setStepDir] = useState<'forward' | 'backward'>('forward');
   const [answers, setAnswers] = useState<Record<string, AssessmentAnswerValue>>({});
 
   const questions = FINAL_ASSESSMENT_QUESTIONS;
   const currentQ = questions[currentIndex];
   const currentAnswer = answers[currentQ.id] || {};
+
+  const goToQuestion = (nextIndex: number) => {
+    setStepDir(nextIndex >= currentIndex ? 'forward' : 'backward');
+    setCurrentIndex(nextIndex);
+  };
 
   const isQuestionAnswered = (qId: string): boolean => {
     const q = questions.find((item) => item.id === qId);
@@ -75,6 +81,7 @@ export const AssessmentScreen: React.FC<AssessmentScreenProps> = ({
 
   const handleRetry = () => {
     setAnswers({});
+    setStepDir('forward');
     setCurrentIndex(0);
     setViewMode('taking');
   };
@@ -114,10 +121,10 @@ export const AssessmentScreen: React.FC<AssessmentScreenProps> = ({
                   <button
                     key={q.id}
                     type="button"
-                    onClick={() => setCurrentIndex(idx)}
+                    onClick={() => goToQuestion(idx)}
                     aria-label={`Question ${q.number}${answered ? ', answered' : ', unanswered'}`}
                     aria-current={active ? 'step' : undefined}
-                    className={`h-9 w-9 rounded-md font-mono text-xs font-semibold border transition-colors ${
+                    className={`tactile-press h-9 w-9 rounded-md font-mono text-xs font-semibold border ${
                       active
                         ? 'border-[#2563EB] bg-[#2563EB] text-white'
                         : answered
@@ -132,12 +139,15 @@ export const AssessmentScreen: React.FC<AssessmentScreenProps> = ({
             </nav>
           </div>
 
-          {/* Active Question Card */}
+          {/* Active Question Card (directional step transition) */}
           <section
+            key={currentQ.id}
             aria-labelledby="assessment-question-heading"
-            className="rounded-md border border-[#CBD5E1] bg-white p-5 sm:p-6"
+            className={`${
+              stepDir === 'forward' ? 'step-enter-forward' : 'step-enter-backward'
+            } rounded-md border border-[#CBD5E1] bg-white p-5 sm:p-6`}
           >
-            <p className="text-xs font-medium text-[#64748B]">
+            <p className="text-xs font-medium tracking-[0.01em] text-[#64748B]">
               Question {currentQ.number} · Aligns with Objective {currentQ.objectiveNumber}
             </p>
             <h2
@@ -160,9 +170,9 @@ export const AssessmentScreen: React.FC<AssessmentScreenProps> = ({
                       return (
                         <label
                           key={opt.id}
-                          className={`flex items-start gap-3 rounded-md border p-3.5 cursor-pointer transition-colors min-h-[44px] ${
+                          className={`tactile-card flex items-start gap-3 rounded-md border p-3.5 cursor-pointer min-h-[44px] ${
                             isSelected
-                              ? 'border-[#2563EB] bg-[#EFF6FF]'
+                              ? 'border-[#2563EB] bg-[#EFF6FF] shadow-[0_1px_2px_rgba(37,99,235,0.08)]'
                               : 'border-[#E2E8F0] bg-[#F8FAFC] hover:bg-slate-100'
                           }`}
                         >
@@ -270,8 +280,8 @@ export const AssessmentScreen: React.FC<AssessmentScreenProps> = ({
             <button
               type="button"
               disabled={currentIndex === 0}
-              onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))}
-              className="inline-flex items-center gap-2 rounded-md border border-[#CBD5E1] bg-white px-4 py-2.5 text-sm font-medium text-[#172033] hover:bg-[#F5F7FA] disabled:opacity-40 disabled:cursor-not-allowed min-h-[44px]"
+              onClick={() => goToQuestion(Math.max(0, currentIndex - 1))}
+              className="tactile-press inline-flex items-center gap-2 rounded-md border border-[#CBD5E1] bg-white px-4 py-2.5 text-sm font-medium text-[#172033] hover:bg-[#F5F7FA] disabled:opacity-40 disabled:cursor-not-allowed min-h-[44px]"
             >
               <ArrowLeft className="h-4 w-4" aria-hidden="true" />
               <span>Previous Question</span>
@@ -281,8 +291,8 @@ export const AssessmentScreen: React.FC<AssessmentScreenProps> = ({
               {currentIndex < questions.length - 1 ? (
                 <button
                   type="button"
-                  onClick={() => setCurrentIndex((i) => Math.min(questions.length - 1, i + 1))}
-                  className="inline-flex items-center gap-2 rounded-md bg-[#2563EB] px-5 py-2.5 text-sm font-medium text-white hover:bg-[#1D4ED8] min-h-[44px]"
+                  onClick={() => goToQuestion(Math.min(questions.length - 1, currentIndex + 1))}
+                  className="tactile-press inline-flex items-center gap-2 rounded-md bg-[#2563EB] px-5 py-2.5 text-sm font-medium text-white hover:bg-[#1D4ED8] min-h-[44px]"
                 >
                   <span>Next Question</span>
                   <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -291,7 +301,7 @@ export const AssessmentScreen: React.FC<AssessmentScreenProps> = ({
                 <button
                   type="button"
                   onClick={() => setViewMode('confirm')}
-                  className="inline-flex items-center gap-2 rounded-md bg-[#15803D] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#166534] min-h-[44px]"
+                  className="tactile-press inline-flex items-center gap-2 rounded-md bg-[#15803D] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#166534] min-h-[44px]"
                 >
                   <span>Review & Submit Assessment</span>
                   <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -306,7 +316,7 @@ export const AssessmentScreen: React.FC<AssessmentScreenProps> = ({
               <button
                 type="button"
                 onClick={() => setViewMode('confirm')}
-                className="text-xs font-medium text-[#2563EB] hover:underline"
+                className="tactile-press text-xs font-medium text-[#2563EB] hover:underline"
               >
                 Finish and review before submitting ({answeredCount}/{questions.length} answered)
               </button>
@@ -319,7 +329,7 @@ export const AssessmentScreen: React.FC<AssessmentScreenProps> = ({
       {viewMode === 'confirm' && (
         <section
           aria-labelledby="confirm-submit-heading"
-          className="mt-6 rounded-md border border-[#CBD5E1] bg-[#F8FAFC] p-6 space-y-4"
+          className="surface-enter mt-6 rounded-md border border-[#CBD5E1] bg-[#F8FAFC] p-6 space-y-4"
         >
           <h2 id="confirm-submit-heading" className="text-xl font-semibold text-[#172033]">
             Confirm Assessment Submission
@@ -350,14 +360,14 @@ export const AssessmentScreen: React.FC<AssessmentScreenProps> = ({
             <button
               type="button"
               onClick={handleConfirmSubmit}
-              className="rounded-md bg-[#2563EB] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#1D4ED8] min-h-[44px]"
+              className="tactile-press rounded-md bg-[#2563EB] px-5 py-2.5 text-sm font-semibold text-white hover:bg-[#1D4ED8] min-h-[44px]"
             >
               Submit Final Assessment
             </button>
             <button
               type="button"
               onClick={() => setViewMode('taking')}
-              className="rounded-md border border-[#CBD5E1] bg-white px-4 py-2.5 text-sm font-medium text-[#172033] hover:bg-slate-50 min-h-[44px]"
+              className="tactile-press rounded-md border border-[#CBD5E1] bg-white px-4 py-2.5 text-sm font-medium text-[#172033] hover:bg-slate-50 min-h-[44px]"
             >
               Return to Questions
             </button>
@@ -367,7 +377,7 @@ export const AssessmentScreen: React.FC<AssessmentScreenProps> = ({
 
       {/* Results, Answer Review & Module Completion Summary */}
       {viewMode === 'results' && latestAssessment && (
-        <div className="mt-6 space-y-8">
+        <div className="surface-enter mt-6 space-y-8">
           {/* Completion & Score Summary Banner */}
           <section
             aria-labelledby="assessment-score-heading"
@@ -386,7 +396,7 @@ export const AssessmentScreen: React.FC<AssessmentScreenProps> = ({
                   aria-hidden="true"
                 />
                 <div>
-                  <p className="text-xs font-semibold text-[#475569]">
+                  <p className="text-xs font-semibold tracking-[0.01em] text-[#475569]">
                     Module 1 Completion Summary · Attempt #{assessmentAttempts}
                   </p>
                   <h2 id="assessment-score-heading" className="mt-1 text-2xl font-bold text-[#172033] tabular-nums">
@@ -412,7 +422,7 @@ export const AssessmentScreen: React.FC<AssessmentScreenProps> = ({
                 <button
                   type="button"
                   onClick={handleRetry}
-                  className="inline-flex items-center gap-1.5 rounded-md bg-[#2563EB] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#1D4ED8] min-h-[44px]"
+                  className="tactile-press inline-flex items-center gap-1.5 rounded-md bg-[#2563EB] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#1D4ED8] min-h-[44px]"
                 >
                   <RotateCcw className="h-4 w-4" aria-hidden="true" />
                   <span>Retry Assessment</span>
@@ -420,7 +430,7 @@ export const AssessmentScreen: React.FC<AssessmentScreenProps> = ({
                 <button
                   type="button"
                   onClick={() => window.print()}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-[#CBD5E1] bg-white px-4 py-2.5 text-sm font-medium text-[#172033] hover:bg-slate-50 min-h-[44px]"
+                  className="tactile-press inline-flex items-center gap-1.5 rounded-md border border-[#CBD5E1] bg-white px-4 py-2.5 text-sm font-medium text-[#172033] hover:bg-slate-50 min-h-[44px]"
                 >
                   <Printer className="h-4 w-4" aria-hidden="true" />
                   <span>Print Summary</span>
@@ -510,7 +520,7 @@ export const AssessmentScreen: React.FC<AssessmentScreenProps> = ({
                       <button
                         type="button"
                         onClick={() => onNavigate(lessonNav.id)}
-                        className="text-xs font-medium text-[#2563EB] hover:underline"
+                        className="tactile-press text-xs font-medium text-[#2563EB] hover:underline"
                       >
                         Revisit {lessonNav.shortLabel}: {lessonNav.title} →
                       </button>

@@ -42,58 +42,83 @@ export const BusInertiaDiagram: React.FC<BusInertiaDiagramProps> = ({ phase }) =
         <circle cx="348" cy="142" r="14" fill="#1E293B" />
         <circle cx="348" cy="142" r="5" fill="#94A3B8" />
 
-        {/* Standing passenger inside center window */}
-        <g transform={isBraking ? 'translate(10, 0)' : 'translate(0, 0)'}>
+        {/* Standing passenger inside center window — GPU transform pivots smoothly from feet */}
+        <g
+          style={{
+            transform: isBraking ? 'translateX(8px)' : 'translateX(0px)',
+            transition: 'transform 260ms cubic-bezier(0.23, 1, 0.32, 1)',
+          }}
+        >
           {/* Legs */}
           <line x1="238" y1="134" x2="240" y2="105" stroke="#172033" strokeWidth="3" strokeLinecap="round" />
           <line x1="246" y1="134" x2="244" y2="105" stroke="#172033" strokeWidth="3" strokeLinecap="round" />
-          {/* Torso tilted forward when braking */}
-          <line
-            x1="242"
-            y1="105"
-            x2={isBraking ? '256' : '242'}
-            y2="78"
-            stroke="#172033"
-            strokeWidth="3.5"
-            strokeLinecap="round"
-          />
-          {/* Head */}
-          <circle cx={isBraking ? '258' : '242'} cy="68" r="7" fill="#2563EB" />
+          {/* Upper body pivoting continuously around hips (242, 105) */}
+          <g
+            style={{
+              transformOrigin: '242px 105px',
+              transform: isBraking ? 'rotate(20deg)' : 'rotate(0deg)',
+              transition: 'transform 280ms cubic-bezier(0.23, 1, 0.32, 1)',
+            }}
+          >
+            <line
+              x1="242"
+              y1="105"
+              x2="242"
+              y2="77"
+              stroke="#172033"
+              strokeWidth="3.5"
+              strokeLinecap="round"
+            />
+            <circle cx="242" cy="68" r="7" fill="#2563EB" />
+          </g>
         </g>
 
-        {/* Velocity & Force Arrows */}
-        {!isBraking ? (
-          <>
-            <line x1="420" y1="88" x2="494" y2="88" stroke="#2563EB" strokeWidth="3" />
-            <polygon points="502,88 490,81 490,95" fill="#2563EB" />
-            <text x="460" y="76" textAnchor="middle" fontSize="12" fontWeight="600" fill="#1D4ED8">
-              Constant v
-            </text>
-            <text x="270" y="26" textAnchor="middle" fontSize="12" fontWeight="600" fill="#334155">
-              Bus and passenger move together at the same forward velocity
-            </text>
-          </>
-        ) : (
-          <>
-            {/* Braking force on bus */}
-            <line x1="115" y1="126" x2="42" y2="126" stroke="#B91C1C" strokeWidth="3" />
-            <polygon points="34,126 46,119 46,133" fill="#B91C1C" />
-            <text x="72" y="114" textAnchor="middle" fontSize="11" fontWeight="600" fill="#B91C1C">
-              Braking force
-            </text>
+        {/* Cruising Velocity Overlay */}
+        <g
+          style={{
+            opacity: isBraking ? 0 : 1,
+            transform: isBraking ? 'translateX(-8px)' : 'translateX(0px)',
+            transition: 'opacity 180ms cubic-bezier(0.23, 1, 0.32, 1), transform 220ms cubic-bezier(0.23, 1, 0.32, 1)',
+            pointerEvents: 'none',
+          }}
+        >
+          <line x1="420" y1="88" x2="494" y2="88" stroke="#2563EB" strokeWidth="3" />
+          <polygon points="502,88 490,81 490,95" fill="#2563EB" />
+          <text x="460" y="76" textAnchor="middle" fontSize="12" fontWeight="600" fill="#1D4ED8">
+            Constant v
+          </text>
+          <text x="270" y="26" textAnchor="middle" fontSize="12" fontWeight="600" fill="#334155">
+            Bus and passenger move together at the same forward velocity
+          </text>
+        </g>
 
-            {/* Passenger's inertia tendency */}
-            <line x1="274" y1="68" x2="334" y2="68" stroke="#B45309" strokeWidth="2.5" strokeDasharray="4 3" />
-            <polygon points="342,68 331,62 331,74" fill="#B45309" />
-            <text x="348" y="54" textAnchor="middle" fontSize="11" fontWeight="600" fill="#92400E">
-              Body continues forward (inertia)
-            </text>
+        {/* Braking Force & Inertia Overlay */}
+        <g
+          style={{
+            opacity: isBraking ? 1 : 0,
+            transform: isBraking ? 'translateX(0px)' : 'translateX(8px)',
+            transition: 'opacity 200ms cubic-bezier(0.23, 1, 0.32, 1), transform 240ms cubic-bezier(0.23, 1, 0.32, 1)',
+            pointerEvents: 'none',
+          }}
+        >
+          {/* Braking force on bus */}
+          <line x1="115" y1="126" x2="42" y2="126" stroke="#B91C1C" strokeWidth="3" />
+          <polygon points="34,126 46,119 46,133" fill="#B91C1C" />
+          <text x="72" y="114" textAnchor="middle" fontSize="11" fontWeight="600" fill="#B91C1C">
+            Braking force
+          </text>
 
-            <text x="270" y="26" textAnchor="middle" fontSize="12" fontWeight="600" fill="#92400E">
-              Brakes slow the bus, while the passenger’s body tends to keep moving forward
-            </text>
-          </>
-        )}
+          {/* Passenger's inertia tendency */}
+          <line x1="274" y1="68" x2="334" y2="68" stroke="#B45309" strokeWidth="2.5" strokeDasharray="4 3" />
+          <polygon points="342,68 331,62 331,74" fill="#B45309" />
+          <text x="348" y="54" textAnchor="middle" fontSize="11" fontWeight="600" fill="#92400E">
+            Body continues forward (inertia)
+          </text>
+
+          <text x="270" y="26" textAnchor="middle" fontSize="12" fontWeight="600" fill="#92400E">
+            Brakes slow the bus, while the passenger’s body tends to keep moving forward
+          </text>
+        </g>
       </svg>
     </figure>
   );

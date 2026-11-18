@@ -9,6 +9,8 @@ interface WelcomeScreenProps {
   onNavigate: (id: ScreenId) => void;
 }
 
+const STAGGER_DELAYS_MS = [0, 35, 65, 90, 110, 125];
+
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   completedScreens,
   onStartLearning,
@@ -20,10 +22,10 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     <article className="space-y-8">
       {/* Header / Orientation Intro */}
       <header className="border-b border-[#E2E8F0] pb-6">
-        <p className="text-xs font-semibold text-[#2563EB]">
+        <p className="text-xs font-semibold tracking-[0.01em] text-[#2563EB]">
           {COURSE_INFO.courseTitle} · {COURSE_INFO.moduleLabel}
         </p>
-        <h1 className="mt-2 text-2xl sm:text-4xl font-bold tracking-tight text-[#172033]">
+        <h1 className="mt-2 text-2xl sm:text-4xl font-bold text-[#172033]">
           {COURSE_INFO.moduleTitle}
         </h1>
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs sm:text-sm text-[#64748B]">
@@ -45,10 +47,13 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           <button
             type="button"
             onClick={onStartLearning}
-            className="inline-flex items-center gap-2 rounded-md bg-[#2563EB] px-6 py-3 text-sm sm:text-base font-semibold text-white hover:bg-[#1D4ED8] min-h-[44px]"
+            className="group tactile-press inline-flex items-center gap-2 rounded-md bg-[#2563EB] px-6 py-3 text-sm sm:text-base font-semibold text-white hover:bg-[#1D4ED8] min-h-[44px]"
           >
             <span>{hasStarted ? 'Continue to Lesson 1' : 'Start Learning'}</span>
-            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            <ArrowRight
+              className="hover-nudge-right h-4 w-4 transition-transform duration-150 ease-[cubic-bezier(0.23,1,0.32,1)]"
+              aria-hidden="true"
+            />
           </button>
         </div>
       </header>
@@ -62,7 +67,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           By the end of Module 1, you will be able to:
         </p>
         <ol className="mt-4 grid gap-3 sm:grid-cols-2">
-          {MODULE_OBJECTIVES.map((obj) => {
+          {MODULE_OBJECTIVES.map((obj, idx) => {
             const targetLesson =
               obj.lessonId === 'lesson-1'
                 ? 'Lesson 1'
@@ -76,7 +81,8 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             return (
               <li
                 key={obj.number}
-                className="rounded-md border border-[#E2E8F0] bg-[#F8FAFC] p-4 flex items-start gap-3"
+                style={{ animationDelay: `${STAGGER_DELAYS_MS[idx] ?? 125}ms` }}
+                className="stagger-item rounded-md border border-[#E2E8F0] bg-[#F8FAFC] p-4 flex items-start gap-3"
               >
                 <span className="font-mono text-xs font-bold text-[#2563EB] mt-0.5 tabular-nums">
                   0{obj.number}
@@ -86,7 +92,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
                   <button
                     type="button"
                     onClick={() => onNavigate(obj.lessonId)}
-                    className="mt-1.5 text-xs font-medium text-[#2563EB] hover:underline"
+                    className="tactile-press mt-1.5 inline-block text-xs font-medium text-[#2563EB] hover:underline"
                   >
                     Go to {targetLesson}
                   </button>

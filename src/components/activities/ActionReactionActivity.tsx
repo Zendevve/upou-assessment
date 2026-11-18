@@ -103,7 +103,7 @@ export const ActionReactionActivity: React.FC<ActionReactionActivityProps> = ({
     >
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#E2E8F0] pb-4">
         <div>
-          <p className="text-xs font-semibold text-[#2563EB]">Interactive Activity 4</p>
+          <p className="text-xs font-semibold tracking-[0.01em] text-[#2563EB]">Interactive Activity 4</p>
           <h3 id="activity-4-title" className="mt-1 text-lg font-semibold text-[#172033]">
             Action–Reaction Force Pair Identifier
           </h3>
@@ -129,9 +129,9 @@ export const ActionReactionActivity: React.FC<ActionReactionActivityProps> = ({
               role="tab"
               aria-selected={isActive}
               onClick={() => setActiveIndex(idx)}
-              className={`inline-flex items-center gap-1.5 rounded-md border px-3.5 py-2 text-xs sm:text-sm font-medium min-h-[40px] ${
+              className={`tactile-press inline-flex items-center gap-1.5 rounded-md border px-3.5 py-2 text-xs sm:text-sm font-medium min-h-[40px] ${
                 isActive
-                  ? 'border-[#2563EB] bg-[#EFF6FF] text-[#1E3A8A]'
+                  ? 'border-[#2563EB] bg-[#EFF6FF] text-[#1E3A8A] shadow-[0_1px_2px_rgba(37,99,235,0.08)]'
                   : 'border-[#CBD5E1] bg-[#F8FAFC] text-[#334155] hover:bg-slate-100'
               }`}
             >
@@ -143,7 +143,7 @@ export const ActionReactionActivity: React.FC<ActionReactionActivityProps> = ({
       </div>
 
       {/* Scenario Prompt + Diagram */}
-      <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_1.15fr]">
+      <div key={scenario.id} className="surface-enter mt-5 grid gap-5 lg:grid-cols-[1fr_1.15fr]">
         <div>
           <p className="text-sm sm:text-base font-medium text-[#172033]">{scenario.context}</p>
           <div className="mt-3">
@@ -160,7 +160,7 @@ export const ActionReactionActivity: React.FC<ActionReactionActivityProps> = ({
               id={`obj-a-${scenario.id}`}
               value={current.objectA}
               onChange={(e) => updateField('objectA', e.target.value)}
-              className="mt-1.5 w-full rounded-md border border-[#CBD5E1] bg-white px-3 py-2 text-sm text-[#172033] min-h-[44px]"
+              className="mt-1.5 w-full rounded-md border border-[#CBD5E1] bg-white px-3 py-2 text-sm text-[#172033] min-h-[44px] transition-colors duration-150"
             >
               <option value="">Select object exerting the force...</option>
               {scenario.objectAOptions.map((opt) => (
@@ -179,7 +179,7 @@ export const ActionReactionActivity: React.FC<ActionReactionActivityProps> = ({
               id={`obj-b-${scenario.id}`}
               value={current.objectB}
               onChange={(e) => updateField('objectB', e.target.value)}
-              className="mt-1.5 w-full rounded-md border border-[#CBD5E1] bg-white px-3 py-2 text-sm text-[#172033] min-h-[44px]"
+              className="mt-1.5 w-full rounded-md border border-[#CBD5E1] bg-white px-3 py-2 text-sm text-[#172033] min-h-[44px] transition-colors duration-150"
             >
               <option value="">Select object experiencing the force...</option>
               {scenario.objectBOptions.map((opt) => (
@@ -198,7 +198,7 @@ export const ActionReactionActivity: React.FC<ActionReactionActivityProps> = ({
               id={`dir-${scenario.id}`}
               value={current.reactionDir}
               onChange={(e) => updateField('reactionDir', e.target.value)}
-              className="mt-1.5 w-full rounded-md border border-[#CBD5E1] bg-white px-3 py-2 text-sm text-[#172033] min-h-[44px]"
+              className="mt-1.5 w-full rounded-md border border-[#CBD5E1] bg-white px-3 py-2 text-sm text-[#172033] min-h-[44px] transition-colors duration-150"
             >
               <option value="">Select reaction force direction...</option>
               {scenario.reactionDirectionOptions.map((opt) => (
@@ -217,7 +217,7 @@ export const ActionReactionActivity: React.FC<ActionReactionActivityProps> = ({
               id={`reason-${scenario.id}`}
               value={current.nonCancelReason}
               onChange={(e) => updateField('nonCancelReason', e.target.value)}
-              className="mt-1.5 w-full rounded-md border border-[#CBD5E1] bg-white px-3 py-2 text-sm text-[#172033] min-h-[44px]"
+              className="mt-1.5 w-full rounded-md border border-[#CBD5E1] bg-white px-3 py-2 text-sm text-[#172033] min-h-[44px] transition-colors duration-150"
             >
               <option value="">Select explanation...</option>
               {scenario.nonCancelReasonOptions.map((opt) => (
@@ -232,14 +232,14 @@ export const ActionReactionActivity: React.FC<ActionReactionActivityProps> = ({
             <button
               type="submit"
               disabled={!allFieldsChosen}
-              className="rounded-md bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-[#1D4ED8] disabled:opacity-45 disabled:cursor-not-allowed min-h-[44px]"
+              className="tactile-press rounded-md bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-[#1D4ED8] disabled:opacity-45 disabled:cursor-not-allowed min-h-[44px]"
             >
               Check Force Pair
             </button>
             <button
               type="button"
               onClick={handleResetScenario}
-              className="inline-flex items-center gap-1.5 rounded-md border border-[#CBD5E1] bg-white px-3.5 py-2 text-sm font-medium text-[#334155] hover:bg-slate-50 min-h-[44px]"
+              className="tactile-press inline-flex items-center gap-1.5 rounded-md border border-[#CBD5E1] bg-white px-3.5 py-2 text-sm font-medium text-[#334155] hover:bg-slate-50 min-h-[44px]"
             >
               <RotateCcw className="h-4 w-4" aria-hidden="true" />
               Reset Scenario
@@ -250,9 +250,10 @@ export const ActionReactionActivity: React.FC<ActionReactionActivityProps> = ({
 
       {current.submitted && (
         <div
+          key={`${scenario.id}-${current.passed ? 'ok' : 'no'}`}
           role="status"
           aria-live="polite"
-          className={`mt-5 rounded-md border p-4 text-sm flex items-start gap-3 ${
+          className={`surface-enter mt-5 rounded-md border p-4 text-sm flex items-start gap-3 ${
             current.passed
               ? 'border-[#BBF7D0] bg-[#F0FDF4] text-[#14532D]'
               : 'border-[#FECACA] bg-[#FEF2F2] text-[#7F1D1D]'

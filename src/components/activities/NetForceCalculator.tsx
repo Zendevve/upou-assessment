@@ -1,20 +1,33 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, CheckCircle2, RotateCcw } from 'lucide-react';
 import {
   calculateNetForce,
   formatNum,
   HorizontalDirection,
 } from '../../physics/calculations';
+import { rubberband } from '../../utils/fluidMotion';
 
 interface NetForceCalculatorProps {
   onInteracted?: () => void;
 }
+
+const MAX_SLIDER_FORCE = 50;
+const MAX_ARROW_PX = 115;
 
 export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({ onInteracted }) => {
   const [forceAMag, setForceAMag] = useState<string>('15');
   const [forceADir, setForceADir] = useState<HorizontalDirection>('right');
   const [forceBMag, setForceBMag] = useState<string>('5');
   const [forceBDir, setForceBDir] = useState<HorizontalDirection>('left');
+  const [draggingWhich, setDraggingWhich] = useState<'A' | 'B' | null>(null);
+  const [overshootPx, setOvershootPx] = useState<{ A: number; B: number }>({ A: 0, B: 0 });
+
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const dragMetaRef = useRef<{
+    which: 'A' | 'B';
+    pointerId: number;
+    grabOffsetN: number;
+  } | null>(null);
 
   const parsedA = forceAMag.trim() === '' ? NaN : Number(forceAMag);
   const parsedB = forceBMag.trim() === '' ? NaN : Number(forceBMag);
@@ -45,14 +58,100 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({ onIntera
     applyPreset(15, 'right', 5, 'left');
   };
 
-  // Scale arrow length visually (max 110px at 50N+)
-  const scaleArrow = (mag: number) => {
+  // Scale arrow length visually (max 115px at 50N+)
+  const scaleArrow = (mag: number, extraRubber = 0) => {
     if (!Number.isFinite(mag) || mag <= 0) return 0;
-    return Math.min(115, Math.max(24, (mag / 50) * 115));
+    const base = Math.min(MAX_ARROW_PX, Math.max(20, (mag / MAX_SLIDER_FORCE) * MAX_ARROW_PX));
+    return Math.max(0, base + extraRubber);
   };
 
-  const arrowALen = result.valid ? scaleArrow(parsedA) : 0;
-  const arrowBLen = result.valid ? scaleArrow(parsedB) : 0;
+  // Convert clientX in SVG coordinate space (0..440) to signed force centered around crate edges (180..260)
+  const clientXToSvgX = (clientX: number): number => {
+    const svg = svgRef.current;
+    if (!svg) return 220;
+    const rect = svg.getBoundingClientRect();
+    if (rect.width <= 0) return 220;
+    return ((clientX - rect.left) / rect.width) * 440;
+  };
+
+  const svgXToSignedForce = (svgX: number): number => {
+    // Crate spans x=180..260; dragging right of 260 yields +N, left of 180 yields -N
+    if (svgX >= 260) {
+      return ((svgX - 260) / MAX_ARROW_PX) * MAX_SLIDER_FORCE;
+    }
+    if (svgX <= 180) {
+      return -(((180 - svgX) / MAX_ARROW_PX) * MAX_SLIDER_FORCE);
+    }
+    // Inside crate zone (180..260): smoothly map to [-5..+5] around center 220 so crossing 0 feels continuous
+    return ((svgX - 220) / 40) * 5;
+  };
+
+  const startHandleDrag = (which: 'A' | 'B') => (e: React.PointerEvent<SVGCircleElement>) => {
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+    e.stopPropagation();
+    const target = e.currentTarget;
+    try {
+      target.setPointerCapture(e.pointerId);
+    } catch {
+      // Ignore if pointer capture unavailable
+    }
+
+    const currentSigned =
+      which === 'A'
+        ? (Number.isFinite(parsedA) ? parsedA : 0) * (forceADir === 'right' ? 1 : -1)
+        : (Number.isFinite(parsedB) ? parsedB : 0) * (forceBDir === 'right' ? 1 : -1);
+
+    const pointerSigned = svgXToSignedForce(clientXToSvgX(e.clientX));
+    dragMetaRef.current = {
+      which,
+      pointerId: e.pointerId,
+      grabOffsetN: currentSigned - pointerSigned,
+    };
+    setDraggingWhich(which);
+    markUsed();
+  };
+
+  const moveHandleDrag = (e: React.PointerEvent<SVGCircleElement>) => {
+    const meta = dragMetaRef.current;
+    if (!meta || meta.pointerId !== e.pointerId) return;
+
+    const rawSigned = svgXToSignedForce(clientXToSvgX(e.clientX)) + meta.grabOffsetN;
+    const clampedSigned = Math.max(-MAX_SLIDER_FORCE, Math.min(MAX_SLIDER_FORCE, rawSigned));
+    const roundedMag = Math.round(Math.abs(clampedSigned));
+    const nextDir: HorizontalDirection = clampedSigned >= 0 ? 'right' : 'left';
+
+    // Progressive rubber-band visual extension when dragged past +-50 N
+    const excessN = Math.abs(rawSigned) - MAX_SLIDER_FORCE;
+    const rubberPx = excessN > 0 ? rubberband((excessN / MAX_SLIDER_FORCE) * MAX_ARROW_PX, 28, 0.55) : 0;
+
+    if (meta.which === 'A') {
+      setForceAMag(String(roundedMag));
+      if (roundedMag > 0) setForceADir(nextDir);
+      setOvershootPx((prev) => ({ ...prev, A: rubberPx }));
+    } else {
+      setForceBMag(String(roundedMag));
+      if (roundedMag > 0) setForceBDir(nextDir);
+      setOvershootPx((prev) => ({ ...prev, B: rubberPx }));
+    }
+  };
+
+  const endHandleDrag = (e: React.PointerEvent<SVGCircleElement>) => {
+    const meta = dragMetaRef.current;
+    if (!meta || meta.pointerId !== e.pointerId) return;
+    try {
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      }
+    } catch {
+      // Ignore
+    }
+    dragMetaRef.current = null;
+    setDraggingWhich(null);
+    setOvershootPx({ A: 0, B: 0 });
+  };
+
+  const arrowALen = result.valid ? scaleArrow(parsedA, overshootPx.A) : 0;
+  const arrowBLen = result.valid ? scaleArrow(parsedB, overshootPx.B) : 0;
   const netArrowLen = result.valid ? scaleArrow(result.netMagnitude) : 0;
 
   return (
@@ -62,19 +161,19 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({ onIntera
     >
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#E2E8F0] pb-4">
         <div>
-          <p className="text-xs font-semibold text-[#2563EB]">Interactive Activity 1</p>
+          <p className="text-xs font-semibold tracking-[0.01em] text-[#2563EB]">Interactive Activity 1</p>
           <h3 id="activity-1-title" className="mt-1 text-lg font-semibold text-[#172033]">
             Net Force Calculator
           </h3>
           <p className="mt-1 text-sm text-[#475569]">
-            Adjust the magnitudes and directions of two horizontal forces acting on a crate to observe how they combine.
+            Drag the force arrow tips directly on the diagram, or use the inputs below to see how horizontal forces combine.
           </p>
         </div>
 
         <button
           type="button"
           onClick={handleReset}
-          className="inline-flex items-center gap-1.5 rounded-md border border-[#CBD5E1] bg-[#F8FAFC] px-3 py-2 text-xs font-medium text-[#172033] hover:bg-slate-100 min-h-[40px]"
+          className="tactile-press inline-flex items-center gap-1.5 rounded-md border border-[#CBD5E1] bg-[#F8FAFC] px-3 py-2 text-xs font-medium text-[#172033] hover:bg-slate-100 min-h-[40px]"
         >
           <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
           Reset
@@ -87,21 +186,21 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({ onIntera
         <button
           type="button"
           onClick={() => applyPreset(10, 'right', 10, 'left')}
-          className="rounded border border-[#E2E8F0] bg-[#F5F7FA] px-3 py-1.5 text-xs font-medium text-[#172033] hover:bg-slate-200/70 min-h-[36px]"
+          className="tactile-press rounded border border-[#E2E8F0] bg-[#F5F7FA] px-3 py-1.5 text-xs font-medium text-[#172033] hover:bg-slate-200/70 min-h-[36px]"
         >
           Balanced (10 N right, 10 N left)
         </button>
         <button
           type="button"
           onClick={() => applyPreset(15, 'right', 5, 'left')}
-          className="rounded border border-[#E2E8F0] bg-[#F5F7FA] px-3 py-1.5 text-xs font-medium text-[#172033] hover:bg-slate-200/70 min-h-[36px]"
+          className="tactile-press rounded border border-[#E2E8F0] bg-[#F5F7FA] px-3 py-1.5 text-xs font-medium text-[#172033] hover:bg-slate-200/70 min-h-[36px]"
         >
           Unbalanced (15 N right, 5 N left)
         </button>
         <button
           type="button"
           onClick={() => applyPreset(8, 'right', 20, 'left')}
-          className="rounded border border-[#E2E8F0] bg-[#F5F7FA] px-3 py-1.5 text-xs font-medium text-[#172033] hover:bg-slate-200/70 min-h-[36px]"
+          className="tactile-press rounded border border-[#E2E8F0] bg-[#F5F7FA] px-3 py-1.5 text-xs font-medium text-[#172033] hover:bg-slate-200/70 min-h-[36px]"
         >
           Leftward Net (8 N right, 20 N left)
         </button>
@@ -112,8 +211,9 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({ onIntera
         {/* Visual Vector Stage */}
         <div className="rounded-md border border-[#E2E8F0] bg-[#F8FAFC] p-4 flex flex-col justify-between">
           <svg
+            ref={svgRef}
             viewBox="0 0 440 200"
-            className="w-full h-auto rounded border border-[#E2E8F0] bg-white"
+            className="w-full h-auto rounded border border-[#E2E8F0] bg-white select-none touch-pan-y"
             role="img"
             aria-label={
               result.valid
@@ -130,7 +230,7 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({ onIntera
               Object
             </text>
 
-            {/* Force A Vector */}
+            {/* Force A Vector + Direct Drag Handle */}
             {result.valid && arrowALen > 0 && (
               <g>
                 {forceADir === 'right' ? (
@@ -150,6 +250,20 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({ onIntera
                     >
                       F1: {formatNum(parsedA)} N
                     </text>
+                    <circle
+                      cx={264 + arrowALen}
+                      cy="80"
+                      r={draggingWhich === 'A' ? 12 : 10}
+                      fill={draggingWhich === 'A' ? 'rgba(37,99,235,0.22)' : 'rgba(37,99,235,0.08)'}
+                      stroke="#2563EB"
+                      strokeOpacity={draggingWhich === 'A' ? 0.65 : 0.25}
+                      strokeWidth="1.5"
+                      className="cursor-grab active:cursor-grabbing touch-none"
+                      onPointerDown={startHandleDrag('A')}
+                      onPointerMove={moveHandleDrag}
+                      onPointerUp={endHandleDrag}
+                      onPointerCancel={endHandleDrag}
+                    />
                   </>
                 ) : (
                   <>
@@ -168,12 +282,26 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({ onIntera
                     >
                       F1: {formatNum(parsedA)} N
                     </text>
+                    <circle
+                      cx={176 - arrowALen}
+                      cy="80"
+                      r={draggingWhich === 'A' ? 12 : 10}
+                      fill={draggingWhich === 'A' ? 'rgba(37,99,235,0.22)' : 'rgba(37,99,235,0.08)'}
+                      stroke="#2563EB"
+                      strokeOpacity={draggingWhich === 'A' ? 0.65 : 0.25}
+                      strokeWidth="1.5"
+                      className="cursor-grab active:cursor-grabbing touch-none"
+                      onPointerDown={startHandleDrag('A')}
+                      onPointerMove={moveHandleDrag}
+                      onPointerUp={endHandleDrag}
+                      onPointerCancel={endHandleDrag}
+                    />
                   </>
                 )}
               </g>
             )}
 
-            {/* Force B Vector */}
+            {/* Force B Vector + Direct Drag Handle */}
             {result.valid && arrowBLen > 0 && (
               <g>
                 {forceBDir === 'right' ? (
@@ -193,6 +321,20 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({ onIntera
                     >
                       F2: {formatNum(parsedB)} N
                     </text>
+                    <circle
+                      cx={264 + arrowBLen}
+                      cy="106"
+                      r={draggingWhich === 'B' ? 12 : 10}
+                      fill={draggingWhich === 'B' ? 'rgba(185,28,28,0.2)' : 'rgba(185,28,28,0.07)'}
+                      stroke="#B91C1C"
+                      strokeOpacity={draggingWhich === 'B' ? 0.65 : 0.25}
+                      strokeWidth="1.5"
+                      className="cursor-grab active:cursor-grabbing touch-none"
+                      onPointerDown={startHandleDrag('B')}
+                      onPointerMove={moveHandleDrag}
+                      onPointerUp={endHandleDrag}
+                      onPointerCancel={endHandleDrag}
+                    />
                   </>
                 ) : (
                   <>
@@ -211,6 +353,20 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({ onIntera
                     >
                       F2: {formatNum(parsedB)} N
                     </text>
+                    <circle
+                      cx={176 - arrowBLen}
+                      cy="106"
+                      r={draggingWhich === 'B' ? 12 : 10}
+                      fill={draggingWhich === 'B' ? 'rgba(185,28,28,0.2)' : 'rgba(185,28,28,0.07)'}
+                      stroke="#B91C1C"
+                      strokeOpacity={draggingWhich === 'B' ? 0.65 : 0.25}
+                      strokeWidth="1.5"
+                      className="cursor-grab active:cursor-grabbing touch-none"
+                      onPointerDown={startHandleDrag('B')}
+                      onPointerMove={moveHandleDrag}
+                      onPointerUp={endHandleDrag}
+                      onPointerCancel={endHandleDrag}
+                    />
                   </>
                 )}
               </g>
@@ -262,7 +418,7 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({ onIntera
             <div
               role="status"
               aria-live="polite"
-              className={`mt-4 rounded-md border p-4 ${
+              className={`mt-4 rounded-md border p-4 transition-colors duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] ${
                 result.isBalanced
                   ? 'border-[#BBF7D0] bg-[#F0FDF4]'
                   : 'border-[#BFDBFE] bg-[#EFF6FF]'
@@ -290,7 +446,7 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({ onIntera
           ) : (
             <div
               role="alert"
-              className="mt-4 rounded-md border border-[#FECACA] bg-[#FEF2F2] p-3.5 text-sm text-[#991B1B]"
+              className="surface-enter mt-4 rounded-md border border-[#FECACA] bg-[#FEF2F2] p-3.5 text-sm text-[#991B1B]"
             >
               {result.error}
             </div>
@@ -341,7 +497,7 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({ onIntera
                   markUsed();
                 }}
                 aria-pressed={forceADir === 'left'}
-                className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-xs font-medium min-h-[40px] ${
+                className={`tactile-press flex-1 inline-flex items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-xs font-medium min-h-[40px] ${
                   forceADir === 'left'
                     ? 'border-[#2563EB] bg-[#EFF6FF] text-[#1E3A8A]'
                     : 'border-[#CBD5E1] bg-white text-[#475569] hover:bg-slate-50'
@@ -357,7 +513,7 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({ onIntera
                   markUsed();
                 }}
                 aria-pressed={forceADir === 'right'}
-                className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-xs font-medium min-h-[40px] ${
+                className={`tactile-press flex-1 inline-flex items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-xs font-medium min-h-[40px] ${
                   forceADir === 'right'
                     ? 'border-[#2563EB] bg-[#EFF6FF] text-[#1E3A8A]'
                     : 'border-[#CBD5E1] bg-white text-[#475569] hover:bg-slate-50'
@@ -411,7 +567,7 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({ onIntera
                   markUsed();
                 }}
                 aria-pressed={forceBDir === 'left'}
-                className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-xs font-medium min-h-[40px] ${
+                className={`tactile-press flex-1 inline-flex items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-xs font-medium min-h-[40px] ${
                   forceBDir === 'left'
                     ? 'border-[#B91C1C] bg-[#FEF2F2] text-[#991B1B]'
                     : 'border-[#CBD5E1] bg-white text-[#475569] hover:bg-slate-50'
@@ -427,7 +583,7 @@ export const NetForceCalculator: React.FC<NetForceCalculatorProps> = ({ onIntera
                   markUsed();
                 }}
                 aria-pressed={forceBDir === 'right'}
-                className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-xs font-medium min-h-[40px] ${
+                className={`tactile-press flex-1 inline-flex items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-xs font-medium min-h-[40px] ${
                   forceBDir === 'right'
                     ? 'border-[#B91C1C] bg-[#FEF2F2] text-[#991B1B]'
                     : 'border-[#CBD5E1] bg-white text-[#475569] hover:bg-slate-50'

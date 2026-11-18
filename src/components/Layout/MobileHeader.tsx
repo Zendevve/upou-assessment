@@ -18,12 +18,12 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   const { percentage } = calculateOverallProgress(completedScreens);
 
   return (
-    <header className="mobile-topbar lg:hidden sticky top-0 z-30 bg-white/95 backdrop-blur-sm border-b border-[#E2E8F0]">
+    <header className="mobile-topbar translucent-chrome lg:hidden sticky top-0 z-30">
       <div className="flex items-center justify-between gap-3 px-4 py-2.5">
         <button
           type="button"
           onClick={onOpenMenu}
-          className="inline-flex items-center gap-2 rounded-md border border-[#CBD5E1] bg-white px-3 py-2 text-xs font-medium text-[#172033] hover:bg-slate-50 min-h-[44px] shrink-0"
+          className="tactile-press inline-flex items-center gap-2 rounded-md border border-[#CBD5E1]/90 bg-white/85 px-3 py-2 text-xs font-medium text-[#172033] hover:bg-white min-h-[44px] shrink-0 shadow-[0_1px_2px_rgba(15,23,42,0.05)]"
           aria-label="Open lesson navigation menu"
         >
           <Menu className="h-4 w-4" aria-hidden="true" />
@@ -31,16 +31,16 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
         </button>
 
         <div className="min-w-0 flex-1">
-          <p className="truncate text-xs text-[#64748B]">
+          <p className="truncate text-xs tracking-[0.01em] text-[#475569]">
             Module 1 · {currentItem.shortLabel}
           </p>
-          <p className="truncate text-sm font-semibold text-[#172033]">
+          <p className="truncate text-sm font-semibold text-[#172033] tracking-[-0.008em]">
             {currentItem.title}
           </p>
         </div>
 
         <div className="shrink-0 text-right">
-          <span className="font-mono text-xs font-medium text-[#2563EB] tabular-nums">
+          <span className="font-mono text-xs font-semibold text-[#1D4ED8] tabular-nums">
             {percentage}%
           </span>
         </div>

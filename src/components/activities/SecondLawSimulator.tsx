@@ -1,38 +1,51 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Pause, Play, RotateCcw } from 'lucide-react';
 import { calculateAcceleration, formatNum } from '../../physics/calculations';
+import {
+  computePointerVelocity,
+  prefersReducedMotion,
+  rubberband,
+  VelocitySample,
+} from '../../utils/fluidMotion';
 
 interface SecondLawSimulatorProps {
   onInteracted?: () => void;
 }
 
+const MIN_PCT = 12;
+const MAX_PCT = 88;
+const SVG_WIDTH = 480;
+
 export const SecondLawSimulator: React.FC<SecondLawSimulatorProps> = ({ onInteracted }) => {
   const [forceInput, setForceInput] = useState<string>('20');
   const [massInput, setMassInput] = useState<string>('5');
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [cartOffsetPct, setCartOffsetPct] = useState<number>(50); // 10..90% along track
+  const [cartOffsetPct, setCartOffsetPct] = useState<number>(50); // 12..88% along track
   const [velocityMs, setVelocityMs] = useState<number>(0);
+  const [isDraggingCart, setIsDraggingCart] = useState<boolean>(false);
 
   const parsedForce = forceInput.trim() === '' ? NaN : Number(forceInput);
   const parsedMass = massInput.trim() === '' ? NaN : Number(massInput);
   const calc = calculateAcceleration(parsedForce, parsedMass);
 
+  const svgRef = useRef<SVGSVGElement | null>(null);
   const rafRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number | null>(null);
+  const dragRef = useRef<{
+    active: boolean;
+    pointerId: number;
+    grabOffsetPct: number;
+    samples: VelocitySample[];
+  } | null>(null);
 
   useEffect(() => {
-    if (!isPlaying || !calc.valid) {
+    if (!isPlaying || !calc.valid || isDraggingCart) {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       lastTimeRef.current = null;
       return;
     }
 
-    const prefersReduced =
-      typeof window !== 'undefined' &&
-      window.matchMedia &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    if (prefersReduced) {
+    if (prefersReducedMotion()) {
       setIsPlaying(false);
       return;
     }
@@ -47,10 +60,9 @@ export const SecondLawSimulator: React.FC<SecondLawSimulatorProps> = ({ onIntera
       setVelocityMs((prevV) => {
         const nextV = prevV + calc.accelerationMs2 * dt;
         setCartOffsetPct((prevPos) => {
-          // Map meters/s cleanly across track width and wrap smoothly if edge reached
           let nextPos = prevPos + nextV * dt * 5;
-          if (nextPos > 88) nextPos = 12;
-          if (nextPos < 12) nextPos = 88;
+          if (nextPos > MAX_PCT) nextPos = MIN_PCT;
+          if (nextPos < MIN_PCT) nextPos = MAX_PCT;
           return nextPos;
         });
         return Math.max(-25, Math.min(25, nextV));
@@ -63,7 +75,7 @@ export const SecondLawSimulator: React.FC<SecondLawSimulatorProps> = ({ onIntera
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [isPlaying, calc.valid, calc.accelerationMs2]);
+  }, [isPlaying, calc.valid, calc.accelerationMs2, isDraggingCart]);
 
   const markUsed = () => {
     if (onInteracted) onInteracted();
@@ -87,6 +99,89 @@ export const SecondLawSimulator: React.FC<SecondLawSimulatorProps> = ({ onIntera
     markUsed();
   };
 
+  const clientXToTrackPct = (clientX: number): number => {
+    const svg = svgRef.current;
+    if (!svg) return 50;
+    const rect = svg.getBoundingClientRect();
+    if (rect.width <= 0) return 50;
+    return ((clientX - rect.left) / rect.width) * 100;
+  };
+
+  // Direct manipulation on the cart (interruptible, grab-offset aware, rubber-banded edges, velocity handoff)
+  const handleCartPointerDown = (e: React.PointerEvent<SVGGElement>) => {
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+    e.stopPropagation();
+
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      // Ignore
+    }
+
+    const pointerPct = clientXToTrackPct(e.clientX);
+    dragRef.current = {
+      active: true,
+      pointerId: e.pointerId,
+      grabOffsetPct: cartOffsetPct - pointerPct,
+      samples: [{ x: e.clientX, y: e.clientY, time: performance.now() }],
+    };
+
+    // Interrupt active playback immediately and grab the live cart position
+    setIsDraggingCart(true);
+    setIsPlaying(false);
+    setVelocityMs(0);
+    markUsed();
+  };
+
+  const handleCartPointerMove = (e: React.PointerEvent<SVGGElement>) => {
+    const drag = dragRef.current;
+    if (!drag || !drag.active || drag.pointerId !== e.pointerId) return;
+
+    const rawPct = clientXToTrackPct(e.clientX) + drag.grabOffsetPct;
+    let nextPct = rawPct;
+    if (rawPct < MIN_PCT) {
+      nextPct = MIN_PCT + rubberband(rawPct - MIN_PCT, 10, 0.55);
+    } else if (rawPct > MAX_PCT) {
+      nextPct = MAX_PCT + rubberband(rawPct - MAX_PCT, 10, 0.55);
+    }
+
+    drag.samples.push({ x: e.clientX, y: e.clientY, time: performance.now() });
+    if (drag.samples.length > 8) drag.samples.shift();
+
+    setCartOffsetPct(nextPct);
+  };
+
+  const handleCartPointerEnd = (e: React.PointerEvent<SVGGElement>) => {
+    const drag = dragRef.current;
+    if (!drag || !drag.active || drag.pointerId !== e.pointerId) return;
+
+    try {
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      }
+    } catch {
+      // Ignore
+    }
+
+    const { vx } = computePointerVelocity(drag.samples);
+    const svgWidthPx = svgRef.current?.getBoundingClientRect().width || SVG_WIDTH;
+    // Convert px/s to track %/s -> m/s (matching `nextV * dt * 5`)
+    const pctPerSec = (vx / svgWidthPx) * 100;
+    const handoffVelocityMs = Math.max(-18, Math.min(18, pctPerSec / 5));
+
+    dragRef.current = null;
+    setIsDraggingCart(false);
+
+    // Clamp cleanly back inside track if released inside rubber-band zone
+    setCartOffsetPct((p) => Math.max(MIN_PCT, Math.min(MAX_PCT, p)));
+
+    // If learner flicked the cart while valid, hand off velocity seamlessly into playback
+    if (calc.valid && Math.abs(vx) > 220 && !prefersReducedMotion()) {
+      setVelocityMs(handoffVelocityMs);
+      setIsPlaying(true);
+    }
+  };
+
   const clampedForceSlider = Number.isFinite(parsedForce)
     ? Math.max(-50, Math.min(50, parsedForce))
     : 0;
@@ -97,7 +192,13 @@ export const SecondLawSimulator: React.FC<SecondLawSimulatorProps> = ({ onIntera
   // Box size scales slightly with mass for visual clarity (38px to 68px)
   const boxSize = calc.valid ? Math.min(68, Math.max(38, 34 + parsedMass * 1.7)) : 46;
   const forceArrowLen = calc.valid ? Math.min(95, Math.abs(parsedForce) * 1.9) : 0;
-  const accBarWidth = calc.valid ? Math.min(100, (calc.magnitudeMs2 / 15) * 100) : 0;
+  const accBarRatio = calc.valid ? Math.min(1, calc.magnitudeMs2 / 15) : 0;
+
+  // Position cart relative to SVG center (240) using GPU transform translateX
+  const baseCenterX = SVG_WIDTH / 2;
+  const cartTranslateX = ((cartOffsetPct - 50) / 100) * SVG_WIDTH;
+  const boxX = baseCenterX - boxSize / 2;
+  const boxY = 128 - boxSize;
 
   return (
     <section
@@ -106,12 +207,12 @@ export const SecondLawSimulator: React.FC<SecondLawSimulatorProps> = ({ onIntera
     >
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[#E2E8F0] pb-4">
         <div>
-          <p className="text-xs font-semibold text-[#2563EB]">Interactive Activity 3</p>
+          <p className="text-xs font-semibold tracking-[0.01em] text-[#2563EB]">Interactive Activity 3</p>
           <h3 id="activity-3-title" className="mt-1 text-lg font-semibold text-[#172033]">
             Newton’s Second Law Simulator (F_net = ma)
           </h3>
           <p className="mt-1 text-sm text-[#475569]">
-            Adjust the applied net force and object mass to test how acceleration changes.
+            Adjust net force and mass, press Run Motion, or grab and flick the box directly along the track.
           </p>
         </div>
 
@@ -123,7 +224,7 @@ export const SecondLawSimulator: React.FC<SecondLawSimulatorProps> = ({ onIntera
               setIsPlaying((p) => !p);
               markUsed();
             }}
-            className="inline-flex items-center gap-1.5 rounded-md bg-[#2563EB] px-3.5 py-2 text-xs font-medium text-white hover:bg-[#1D4ED8] disabled:opacity-45 disabled:cursor-not-allowed min-h-[40px]"
+            className="tactile-press inline-flex items-center gap-1.5 rounded-md bg-[#2563EB] px-3.5 py-2 text-xs font-medium text-white hover:bg-[#1D4ED8] disabled:opacity-45 disabled:cursor-not-allowed min-h-[40px]"
           >
             {isPlaying ? (
               <>
@@ -141,7 +242,7 @@ export const SecondLawSimulator: React.FC<SecondLawSimulatorProps> = ({ onIntera
           <button
             type="button"
             onClick={handleReset}
-            className="inline-flex items-center gap-1.5 rounded-md border border-[#CBD5E1] bg-[#F8FAFC] px-3 py-2 text-xs font-medium text-[#172033] hover:bg-slate-100 min-h-[40px]"
+            className="tactile-press inline-flex items-center gap-1.5 rounded-md border border-[#CBD5E1] bg-[#F8FAFC] px-3 py-2 text-xs font-medium text-[#172033] hover:bg-slate-100 min-h-[40px]"
           >
             <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
             Reset
@@ -155,21 +256,21 @@ export const SecondLawSimulator: React.FC<SecondLawSimulatorProps> = ({ onIntera
         <button
           type="button"
           onClick={() => applyPreset(20, 5)}
-          className="rounded border border-[#E2E8F0] bg-[#F5F7FA] px-3 py-1.5 text-xs font-medium text-[#172033] hover:bg-slate-200/70 min-h-[36px]"
+          className="tactile-press rounded border border-[#E2E8F0] bg-[#F5F7FA] px-3 py-1.5 text-xs font-medium text-[#172033] hover:bg-slate-200/70 min-h-[36px]"
         >
           Baseline (20 N, 5 kg)
         </button>
         <button
           type="button"
           onClick={() => applyPreset(40, 5)}
-          className="rounded border border-[#E2E8F0] bg-[#F5F7FA] px-3 py-1.5 text-xs font-medium text-[#172033] hover:bg-slate-200/70 min-h-[36px]"
+          className="tactile-press rounded border border-[#E2E8F0] bg-[#F5F7FA] px-3 py-1.5 text-xs font-medium text-[#172033] hover:bg-slate-200/70 min-h-[36px]"
         >
           Double Force (40 N, 5 kg)
         </button>
         <button
           type="button"
           onClick={() => applyPreset(20, 10)}
-          className="rounded border border-[#E2E8F0] bg-[#F5F7FA] px-3 py-1.5 text-xs font-medium text-[#172033] hover:bg-slate-200/70 min-h-[36px]"
+          className="tactile-press rounded border border-[#E2E8F0] bg-[#F5F7FA] px-3 py-1.5 text-xs font-medium text-[#172033] hover:bg-slate-200/70 min-h-[36px]"
         >
           Double Mass (20 N, 10 kg)
         </button>
@@ -182,8 +283,9 @@ export const SecondLawSimulator: React.FC<SecondLawSimulatorProps> = ({ onIntera
           <div>
             {/* Track Visual */}
             <svg
+              ref={svgRef}
               viewBox="0 0 480 175"
-              className="w-full h-auto rounded border border-[#E2E8F0] bg-white"
+              className="w-full h-auto rounded border border-[#E2E8F0] bg-white select-none touch-pan-y"
               role="img"
               aria-label={
                 calc.valid
@@ -198,157 +300,162 @@ export const SecondLawSimulator: React.FC<SecondLawSimulatorProps> = ({ onIntera
               {/* Ground Track */}
               <line x1="20" y1="128" x2="460" y2="128" stroke="#64748B" strokeWidth="2.5" />
 
-              {/* Object scaled by mass */}
-              {(() => {
-                const centerX = (cartOffsetPct / 100) * 480;
-                const boxX = centerX - boxSize / 2;
-                const boxY = 128 - boxSize;
-                return (
+              {/* GPU-translated Interactive Cart Group */}
+              <g
+                onPointerDown={handleCartPointerDown}
+                onPointerMove={handleCartPointerMove}
+                onPointerUp={handleCartPointerEnd}
+                onPointerCancel={handleCartPointerEnd}
+                className="cursor-grab active:cursor-grabbing touch-none"
+                style={{
+                  transform: `translateX(${cartTranslateX}px)`,
+                  transition: isDraggingCart || isPlaying ? 'none' : 'transform 220ms cubic-bezier(0.23, 1, 0.32, 1)',
+                }}
+              >
+                <rect
+                  x={boxX}
+                  y={boxY}
+                  width={boxSize}
+                  height={boxSize}
+                  rx="4"
+                  fill={isDraggingCart ? '#DBEAFE' : '#EFF6FF'}
+                  stroke="#1E40AF"
+                  strokeWidth="2"
+                />
+                <text
+                  x={baseCenterX}
+                  y={boxY + boxSize / 2 + 4}
+                  textAnchor="middle"
+                  fontSize="12"
+                  fontWeight="700"
+                  fill="#172033"
+                >
+                  {calc.valid ? `${formatNum(parsedMass)} kg` : '? kg'}
+                </text>
+
+                {/* Net Force Vector */}
+                {calc.valid && forceArrowLen > 0 && (
                   <g>
-                    <rect
-                      x={boxX}
-                      y={boxY}
-                      width={boxSize}
-                      height={boxSize}
-                      rx="4"
-                      fill="#EFF6FF"
-                      stroke="#1E40AF"
-                      strokeWidth="2"
-                    />
-                    <text
-                      x={centerX}
-                      y={boxY + boxSize / 2 + 4}
-                      textAnchor="middle"
-                      fontSize="12"
-                      fontWeight="700"
-                      fill="#172033"
-                    >
-                      {calc.valid ? `${formatNum(parsedMass)} kg` : '? kg'}
-                    </text>
-
-                    {/* Net Force Vector */}
-                    {calc.valid && forceArrowLen > 0 && (
-                      <g>
-                        {parsedForce > 0 ? (
-                          <>
-                            <line
-                              x1={centerX + boxSize / 2}
-                              y1={boxY + boxSize / 2}
-                              x2={centerX + boxSize / 2 + forceArrowLen}
-                              y2={boxY + boxSize / 2}
-                              stroke="#2563EB"
-                              strokeWidth="3.5"
-                            />
-                            <polygon
-                              points={`${centerX + boxSize / 2 + forceArrowLen + 8},${boxY + boxSize / 2} ${
-                                centerX + boxSize / 2 + forceArrowLen - 3
-                              },${boxY + boxSize / 2 - 6} ${centerX + boxSize / 2 + forceArrowLen - 3},${
-                                boxY + boxSize / 2 + 6
-                              }`}
-                              fill="#2563EB"
-                            />
-                            <text
-                              x={centerX + boxSize / 2 + forceArrowLen / 2}
-                              y={boxY + boxSize / 2 - 10}
-                              textAnchor="middle"
-                              fontSize="11"
-                              fontWeight="600"
-                              fill="#1D4ED8"
-                            >
-                              {formatNum(parsedForce)} N
-                            </text>
-                          </>
-                        ) : (
-                          <>
-                            <line
-                              x1={centerX - boxSize / 2}
-                              y1={boxY + boxSize / 2}
-                              x2={centerX - boxSize / 2 - forceArrowLen}
-                              y2={boxY + boxSize / 2}
-                              stroke="#B91C1C"
-                              strokeWidth="3.5"
-                            />
-                            <polygon
-                              points={`${centerX - boxSize / 2 - forceArrowLen - 8},${boxY + boxSize / 2} ${
-                                centerX - boxSize / 2 - forceArrowLen + 3
-                              },${boxY + boxSize / 2 - 6} ${centerX - boxSize / 2 - forceArrowLen + 3},${
-                                boxY + boxSize / 2 + 6
-                              }`}
-                              fill="#B91C1C"
-                            />
-                            <text
-                              x={centerX - boxSize / 2 - forceArrowLen / 2}
-                              y={boxY + boxSize / 2 - 10}
-                              textAnchor="middle"
-                              fontSize="11"
-                              fontWeight="600"
-                              fill="#B91C1C"
-                            >
-                              {formatNum(Math.abs(parsedForce))} N
-                            </text>
-                          </>
-                        )}
-                      </g>
-                    )}
-
-                    {/* Acceleration Vector above box */}
-                    {calc.valid && calc.magnitudeMs2 > 0 && (
-                      <g>
-                        {calc.direction === 'right' ? (
-                          <>
-                            <line
-                              x1={centerX - 18}
-                              y1={boxY - 14}
-                              x2={centerX + 22}
-                              y2={boxY - 14}
-                              stroke="#15803D"
-                              strokeWidth="2.5"
-                            />
-                            <polygon
-                              points={`${centerX + 29},${boxY - 14} ${centerX + 19},${boxY - 19} ${
-                                centerX + 19
-                              },${boxY - 9}`}
-                              fill="#15803D"
-                            />
-                          </>
-                        ) : (
-                          <>
-                            <line
-                              x1={centerX + 18}
-                              y1={boxY - 14}
-                              x2={centerX - 22}
-                              y2={boxY - 14}
-                              stroke="#15803D"
-                              strokeWidth="2.5"
-                            />
-                            <polygon
-                              points={`${centerX - 29},${boxY - 14} ${centerX - 19},${boxY - 19} ${
-                                centerX - 19
-                              },${boxY - 9}`}
-                              fill="#15803D"
-                            />
-                          </>
-                        )}
+                    {parsedForce > 0 ? (
+                      <>
+                        <line
+                          x1={baseCenterX + boxSize / 2}
+                          y1={boxY + boxSize / 2}
+                          x2={baseCenterX + boxSize / 2 + forceArrowLen}
+                          y2={boxY + boxSize / 2}
+                          stroke="#2563EB"
+                          strokeWidth="3.5"
+                        />
+                        <polygon
+                          points={`${baseCenterX + boxSize / 2 + forceArrowLen + 8},${boxY + boxSize / 2} ${
+                            baseCenterX + boxSize / 2 + forceArrowLen - 3
+                          },${boxY + boxSize / 2 - 6} ${baseCenterX + boxSize / 2 + forceArrowLen - 3},${
+                            boxY + boxSize / 2 + 6
+                          }`}
+                          fill="#2563EB"
+                        />
                         <text
-                          x={centerX}
-                          y={boxY - 24}
+                          x={baseCenterX + boxSize / 2 + forceArrowLen / 2}
+                          y={boxY + boxSize / 2 - 10}
                           textAnchor="middle"
                           fontSize="11"
                           fontWeight="600"
-                          fill="#15803D"
+                          fill="#1D4ED8"
                         >
-                          a = {formatNum(calc.magnitudeMs2)} m/s²
+                          {formatNum(parsedForce)} N
                         </text>
-                      </g>
+                      </>
+                    ) : (
+                      <>
+                        <line
+                          x1={baseCenterX - boxSize / 2}
+                          y1={boxY + boxSize / 2}
+                          x2={baseCenterX - boxSize / 2 - forceArrowLen}
+                          y2={boxY + boxSize / 2}
+                          stroke="#B91C1C"
+                          strokeWidth="3.5"
+                        />
+                        <polygon
+                          points={`${baseCenterX - boxSize / 2 - forceArrowLen - 8},${boxY + boxSize / 2} ${
+                            baseCenterX - boxSize / 2 - forceArrowLen + 3
+                          },${boxY + boxSize / 2 - 6} ${baseCenterX - boxSize / 2 - forceArrowLen + 3},${
+                            boxY + boxSize / 2 + 6
+                          }`}
+                          fill="#B91C1C"
+                        />
+                        <text
+                          x={baseCenterX - boxSize / 2 - forceArrowLen / 2}
+                          y={boxY + boxSize / 2 - 10}
+                          textAnchor="middle"
+                          fontSize="11"
+                          fontWeight="600"
+                          fill="#B91C1C"
+                        >
+                          {formatNum(Math.abs(parsedForce))} N
+                        </text>
+                      </>
                     )}
                   </g>
-                );
-              })()}
+                )}
+
+                {/* Acceleration Vector above box */}
+                {calc.valid && calc.magnitudeMs2 > 0 && (
+                  <g>
+                    {calc.direction === 'right' ? (
+                      <>
+                        <line
+                          x1={baseCenterX - 18}
+                          y1={boxY - 14}
+                          x2={baseCenterX + 22}
+                          y2={boxY - 14}
+                          stroke="#15803D"
+                          strokeWidth="2.5"
+                        />
+                        <polygon
+                          points={`${baseCenterX + 29},${boxY - 14} ${baseCenterX + 19},${boxY - 19} ${
+                            baseCenterX + 19
+                          },${boxY - 9}`}
+                          fill="#15803D"
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <line
+                          x1={baseCenterX + 18}
+                          y1={boxY - 14}
+                          x2={baseCenterX - 22}
+                          y2={boxY - 14}
+                          stroke="#15803D"
+                          strokeWidth="2.5"
+                        />
+                        <polygon
+                          points={`${baseCenterX - 29},${boxY - 14} ${baseCenterX - 19},${boxY - 19} ${
+                            baseCenterX - 19
+                          },${boxY - 9}`}
+                          fill="#15803D"
+                        />
+                      </>
+                    )}
+                    <text
+                      x={baseCenterX}
+                      y={boxY - 24}
+                      textAnchor="middle"
+                      fontSize="11"
+                      fontWeight="600"
+                      fill="#15803D"
+                    >
+                      a = {formatNum(calc.magnitudeMs2)} m/s²
+                    </text>
+                  </g>
+                )}
+              </g>
 
               <text x="240" y="158" textAnchor="middle" fontSize="11" fill="#64748B">
-                {isPlaying
+                {isDraggingCart
+                  ? 'Release or flick the box to launch it along the track'
+                  : isPlaying
                   ? `Instantaneous speed: ${formatNum(Math.abs(velocityMs))} m/s`
-                  : 'Click "Run Motion" to watch the object accelerate along the track'}
+                  : 'Press "Run Motion" or drag/flick the box along the track'}
               </text>
             </svg>
           </div>
@@ -381,7 +488,7 @@ export const SecondLawSimulator: React.FC<SecondLawSimulatorProps> = ({ onIntera
                 </div>
               </div>
 
-              {/* Acceleration magnitude bar */}
+              {/* Acceleration magnitude bar (GPU-composited scaleX) */}
               <div>
                 <div className="flex items-center justify-between text-xs text-[#475569]">
                   <span>Acceleration Magnitude</span>
@@ -389,8 +496,8 @@ export const SecondLawSimulator: React.FC<SecondLawSimulatorProps> = ({ onIntera
                 </div>
                 <div className="mt-1.5 h-2 w-full rounded-sm bg-[#E2E8F0] overflow-hidden">
                   <div
-                    className="h-full bg-[#15803D] transition-[width] duration-150"
-                    style={{ width: `${accBarWidth}%` }}
+                    className="h-full w-full origin-left bg-[#15803D] transition-transform duration-180 ease-[cubic-bezier(0.23,1,0.32,1)]"
+                    style={{ transform: `scaleX(${accBarRatio})` }}
                   />
                 </div>
               </div>
@@ -407,7 +514,7 @@ export const SecondLawSimulator: React.FC<SecondLawSimulatorProps> = ({ onIntera
           ) : (
             <div
               role="alert"
-              className="mt-4 rounded-md border border-[#FECACA] bg-[#FEF2F2] p-4 text-sm text-[#991B1B]"
+              className="surface-enter mt-4 rounded-md border border-[#FECACA] bg-[#FEF2F2] p-4 text-sm text-[#991B1B]"
             >
               <p className="font-semibold">Invalid Simulation Input</p>
               <p className="mt-1">{calc.error}</p>
@@ -491,7 +598,7 @@ export const SecondLawSimulator: React.FC<SecondLawSimulatorProps> = ({ onIntera
                   markUsed();
                 }}
                 aria-invalid={!calc.valid}
-                className={`w-24 rounded-md border bg-white px-3 py-2 font-mono text-sm text-[#172033] tabular-nums min-h-[44px] ${
+                className={`w-24 rounded-md border bg-white px-3 py-2 font-mono text-sm text-[#172033] tabular-nums min-h-[44px] transition-colors duration-150 ${
                   !calc.valid ? 'border-[#B91C1C]' : 'border-[#CBD5E1]'
                 }`}
               />

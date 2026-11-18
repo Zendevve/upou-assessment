@@ -130,68 +130,70 @@ export default function App() {
           id="main-content"
           className="flex-1 w-full max-w-[880px] mx-auto px-4 sm:px-8 lg:px-12 py-8 sm:py-10"
         >
-          {progress.currentScreen === 'welcome' && (
-            <WelcomeScreen
-              completedScreens={progress.completedScreens}
-              onStartLearning={handleStartLearning}
-              onNavigate={navigateTo}
-            />
-          )}
+          <div key={progress.currentScreen} className="screen-enter">
+            {progress.currentScreen === 'welcome' && (
+              <WelcomeScreen
+                completedScreens={progress.completedScreens}
+                onStartLearning={handleStartLearning}
+                onNavigate={navigateTo}
+              />
+            )}
 
-          {progress.currentScreen === 'lesson-1' && (
-            <Lesson1Forces
-              isCompleted={isCompleted('lesson-1')}
-              onNavigate={navigateTo}
-              onCompleteLesson={() => markScreenCompleted('lesson-1')}
-              onActivityUsed={markActivityUsed}
-            />
-          )}
+            {progress.currentScreen === 'lesson-1' && (
+              <Lesson1Forces
+                isCompleted={isCompleted('lesson-1')}
+                onNavigate={navigateTo}
+                onCompleteLesson={() => markScreenCompleted('lesson-1')}
+                onActivityUsed={markActivityUsed}
+              />
+            )}
 
-          {progress.currentScreen === 'lesson-2' && (
-            <Lesson2FirstLaw
-              isCompleted={isCompleted('lesson-2')}
-              onNavigate={navigateTo}
-              onCompleteLesson={() => markScreenCompleted('lesson-2')}
-              onActivityUsed={markActivityUsed}
-            />
-          )}
+            {progress.currentScreen === 'lesson-2' && (
+              <Lesson2FirstLaw
+                isCompleted={isCompleted('lesson-2')}
+                onNavigate={navigateTo}
+                onCompleteLesson={() => markScreenCompleted('lesson-2')}
+                onActivityUsed={markActivityUsed}
+              />
+            )}
 
-          {progress.currentScreen === 'lesson-3' && (
-            <Lesson3SecondLaw
-              isCompleted={isCompleted('lesson-3')}
-              onNavigate={navigateTo}
-              onCompleteLesson={() => markScreenCompleted('lesson-3')}
-              onActivityUsed={markActivityUsed}
-            />
-          )}
+            {progress.currentScreen === 'lesson-3' && (
+              <Lesson3SecondLaw
+                isCompleted={isCompleted('lesson-3')}
+                onNavigate={navigateTo}
+                onCompleteLesson={() => markScreenCompleted('lesson-3')}
+                onActivityUsed={markActivityUsed}
+              />
+            )}
 
-          {progress.currentScreen === 'lesson-4' && (
-            <Lesson4ThirdLaw
-              isCompleted={isCompleted('lesson-4')}
-              onNavigate={navigateTo}
-              onCompleteLesson={() => markScreenCompleted('lesson-4')}
-              onActivityUsed={markActivityUsed}
-            />
-          )}
+            {progress.currentScreen === 'lesson-4' && (
+              <Lesson4ThirdLaw
+                isCompleted={isCompleted('lesson-4')}
+                onNavigate={navigateTo}
+                onCompleteLesson={() => markScreenCompleted('lesson-4')}
+                onActivityUsed={markActivityUsed}
+              />
+            )}
 
-          {progress.currentScreen === 'lesson-5' && (
-            <Lesson5Synthesis
-              isCompleted={isCompleted('lesson-5')}
-              onNavigate={navigateTo}
-              onCompleteLesson={() => markScreenCompleted('lesson-5')}
-              onActivityUsed={markActivityUsed}
-            />
-          )}
+            {progress.currentScreen === 'lesson-5' && (
+              <Lesson5Synthesis
+                isCompleted={isCompleted('lesson-5')}
+                onNavigate={navigateTo}
+                onCompleteLesson={() => markScreenCompleted('lesson-5')}
+                onActivityUsed={markActivityUsed}
+              />
+            )}
 
-          {progress.currentScreen === 'assessment' && (
-            <AssessmentScreen
-              completedScreens={progress.completedScreens}
-              assessmentAttempts={progress.assessmentAttempts}
-              latestAssessment={progress.latestAssessment}
-              onSubmitAssessment={handleSubmitAssessment}
-              onNavigate={navigateTo}
-            />
-          )}
+            {progress.currentScreen === 'assessment' && (
+              <AssessmentScreen
+                completedScreens={progress.completedScreens}
+                assessmentAttempts={progress.assessmentAttempts}
+                latestAssessment={progress.latestAssessment}
+                onSubmitAssessment={handleSubmitAssessment}
+                onNavigate={navigateTo}
+              />
+            )}
+          </div>
         </main>
       </div>
     </div>
