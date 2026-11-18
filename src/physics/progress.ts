@@ -1,5 +1,6 @@
 import {
   AssessmentResultSummary,
+  FORMATIVE_MASTERY_THRESHOLD_PERCENT,
   MODULE_SCREEN_IDS,
   ScreenId,
 } from './calculations';
@@ -16,6 +17,9 @@ export type LessonId = (typeof LESSON_IDS)[number];
 
 export const LOCKED_LESSON_MESSAGE =
   'Complete the previous lesson and pass its assessment to unlock this lesson.';
+
+export const LOCKED_COMPLETION_MESSAGE =
+  'Complete all 5 lessons and pass the Final Module Assessment (70% or higher) to unlock the Module Completion summary.';
 
 export const LESSON_PASSING_THRESHOLD_PERCENT = 70;
 
@@ -88,14 +92,32 @@ export interface LessonProgressRecord {
   unlocked: boolean;
 }
 
+export interface SectionBookmark {
+  sectionId: string;
+  sectionLabel: string;
+  updatedAt: string;
+}
+
+export interface ReflectionRecord {
+  text: string;
+  updatedAt: string | null;
+  sampleViewed: boolean;
+}
+
 export interface ModuleProgressState {
-  version: 2;
+  version: 3;
   currentScreen: ScreenId;
+  lastActiveLesson: LessonId | null;
+  lastVisitedSections: Partial<Record<ScreenId, SectionBookmark>>;
   lessons: Record<LessonId, LessonProgressRecord>;
   finalAssessmentUnlocked: boolean;
   finalAssessmentCompleted: boolean;
+  finalAssessmentPassed: boolean;
+  bestFinalAssessmentScore: number | null;
   assessmentAttempts: number;
   latestAssessment: AssessmentResultSummary | null;
+  moduleCompleted: boolean;
+  reflection: ReflectionRecord;
 }
 
 export interface LessonProgressSummary {
@@ -134,8 +156,10 @@ export function createEmptyLessonRecord(unlocked: boolean): LessonProgressRecord
 
 export function createInitialModuleProgress(): ModuleProgressState {
   return {
-    version: 2,
+    version: 3,
     currentScreen: 'welcome',
+    lastActiveLesson: null,
+    lastVisitedSections: {},
     lessons: {
       'lesson-1': createEmptyLessonRecord(true),
       'lesson-2': createEmptyLessonRecord(false),
@@ -145,8 +169,16 @@ export function createInitialModuleProgress(): ModuleProgressState {
     },
     finalAssessmentUnlocked: false,
     finalAssessmentCompleted: false,
+    finalAssessmentPassed: false,
+    bestFinalAssessmentScore: null,
     assessmentAttempts: 0,
     latestAssessment: null,
+    moduleCompleted: false,
+    reflection: {
+      text: '',
+      updatedAt: null,
+      sampleViewed: false,
+    },
   };
 }
 
@@ -196,12 +228,6 @@ export function calculateLessonProgress(
 
 /**
  * Reconciles completion and sequential unlock invariants across the entire module.
- * - Lesson 1 is always unlocked.
- * - A lesson is completed iff all its required activities are true AND its assessment is passed.
- * - Once a lesson is unlocked, it stays unlocked (never re-locks on assessment retake).
- * - Each subsequent lesson unlocks when the previous lesson reaches completed === true.
- * - Final Module Assessment unlocks once Lesson 5 is completed.
- * - Ensures currentScreen cannot point to a locked screen.
  */
 export function reconcileModuleProgress(state: ModuleProgressState): ModuleProgressState {
   const nextLessons = { ...state.lessons };
@@ -211,7 +237,6 @@ export function reconcileModuleProgress(state: ModuleProgressState): ModuleProgr
     const existing = nextLessons[id] ?? createEmptyLessonRecord(i === 0);
     const reqIds = new Set(LESSON_REQUIREMENTS[id].requiredActivities.map((a) => a.id));
 
-    // Only keep known required activities for this lesson
     const cleanedActivities: Record<string, boolean> = {};
     for (const key of Object.keys(existing.activities || {})) {
       if (reqIds.has(key) && existing.activities[key] === true) {
@@ -231,7 +256,6 @@ export function reconcileModuleProgress(state: ModuleProgressState): ModuleProgr
       if (nextLessons[prevId].completed) {
         unlocked = true;
       } else if (!existing.completed) {
-        // Guard against tampered storage trying to unlock a lesson whose predecessor was never completed
         unlocked = nextLessons[prevId].completed;
       }
     }
@@ -250,18 +274,53 @@ export function reconcileModuleProgress(state: ModuleProgressState): ModuleProgr
     };
   }
 
+  const allLessonsCompleted = LESSON_IDS.every((id) => nextLessons[id].completed);
   const lesson5Completed = nextLessons['lesson-5'].completed;
-  const finalAssessmentUnlocked = lesson5Completed || Boolean(state.finalAssessmentUnlocked && lesson5Completed);
-  const finalAssessmentCompleted = Boolean(state.latestAssessment) && finalAssessmentUnlocked;
+  const finalAssessmentUnlocked = lesson5Completed;
+
+  const latestPct = state.latestAssessment?.percentage ?? null;
+  const derivedPassedFromLatest =
+    latestPct !== null && latestPct >= FORMATIVE_MASTERY_THRESHOLD_PERCENT;
+  const finalAssessmentPassed =
+    finalAssessmentUnlocked &&
+    (Boolean(state.finalAssessmentPassed) || derivedPassedFromLatest);
+  const finalAssessmentCompleted = finalAssessmentPassed;
+
+  const bestFinalAssessmentScore =
+    state.bestFinalAssessmentScore !== null
+      ? latestPct !== null
+        ? Math.max(state.bestFinalAssessmentScore, latestPct)
+        : state.bestFinalAssessmentScore
+      : latestPct;
+
+  const moduleCompleted = allLessonsCompleted && finalAssessmentPassed;
+
+  const safeLastActiveLesson =
+    state.lastActiveLesson &&
+    isLessonId(state.lastActiveLesson) &&
+    nextLessons[state.lastActiveLesson]?.unlocked
+      ? state.lastActiveLesson
+      : null;
 
   const candidate: ModuleProgressState = {
-    version: 2,
+    version: 3,
     currentScreen: state.currentScreen,
+    lastActiveLesson: safeLastActiveLesson,
+    lastVisitedSections: state.lastVisitedSections ?? {},
     lessons: nextLessons,
     finalAssessmentUnlocked,
     finalAssessmentCompleted,
+    finalAssessmentPassed,
+    bestFinalAssessmentScore,
     assessmentAttempts: Math.max(0, state.assessmentAttempts || 0),
     latestAssessment: state.latestAssessment ?? null,
+    moduleCompleted,
+    reflection: {
+      text: typeof state.reflection?.text === 'string' ? state.reflection.text : '',
+      updatedAt:
+        typeof state.reflection?.updatedAt === 'string' ? state.reflection.updatedAt : null,
+      sampleViewed: Boolean(state.reflection?.sampleViewed),
+    },
   };
 
   if (!canAccessScreen(candidate, candidate.currentScreen)) {
@@ -287,10 +346,16 @@ export function canAccessScreen(state: ModuleProgressState, screenId: ScreenId):
   if (screenId === 'assessment') {
     return Boolean(state.finalAssessmentUnlocked);
   }
+  if (screenId === 'completion') {
+    return Boolean(state.moduleCompleted);
+  }
   return false;
 }
 
 export function getHighestAccessibleScreen(state: ModuleProgressState): ScreenId {
+  if (state.moduleCompleted) {
+    return 'completion';
+  }
   if (state.finalAssessmentUnlocked) {
     return 'assessment';
   }
@@ -303,13 +368,56 @@ export function getHighestAccessibleScreen(state: ModuleProgressState): ScreenId
   return 'lesson-1';
 }
 
+export function getResumeTarget(state: ModuleProgressState): {
+  screenId: ScreenId;
+  sectionId?: string;
+  sectionLabel?: string;
+  hasStarted: boolean;
+} {
+  if (state.moduleCompleted) {
+    return {
+      screenId: 'completion',
+      hasStarted: true,
+    };
+  }
+
+  const targetScreen: ScreenId =
+    state.lastActiveLesson && canAccessScreen(state, state.lastActiveLesson)
+      ? state.lastActiveLesson
+      : state.finalAssessmentUnlocked
+      ? 'assessment'
+      : getHighestAccessibleScreen(state);
+
+  const hasAnyProgress =
+    state.lastActiveLesson !== null ||
+    state.assessmentAttempts > 0 ||
+    Boolean(state.reflection.text.trim()) ||
+    LESSON_IDS.some(
+      (id) =>
+        Object.keys(state.lessons[id].activities).length > 0 ||
+        state.lessons[id].assessment.attempts > 0
+    );
+
+  const bookmark = state.lastVisitedSections[targetScreen];
+  return {
+    screenId: hasAnyProgress ? targetScreen : 'lesson-1',
+    sectionId: bookmark?.sectionId,
+    sectionLabel: bookmark?.sectionLabel,
+    hasStarted: hasAnyProgress,
+  };
+}
+
 export function attemptNavigate(
   state: ModuleProgressState,
   targetScreen: ScreenId
 ): { nextState: ModuleProgressState; allowed: boolean; lockReason: string | null } {
   if (canAccessScreen(state, targetScreen)) {
     return {
-      nextState: { ...state, currentScreen: targetScreen },
+      nextState: {
+        ...state,
+        currentScreen: targetScreen,
+        lastActiveLesson: isLessonId(targetScreen) ? targetScreen : state.lastActiveLesson,
+      },
       allowed: true,
       lockReason: null,
     };
@@ -317,7 +425,61 @@ export function attemptNavigate(
   return {
     nextState: state,
     allowed: false,
-    lockReason: LOCKED_LESSON_MESSAGE,
+    lockReason:
+      targetScreen === 'completion' ? LOCKED_COMPLETION_MESSAGE : LOCKED_LESSON_MESSAGE,
+  };
+}
+
+export function recordSectionVisit(
+  state: ModuleProgressState,
+  screenId: ScreenId,
+  sectionId: string,
+  sectionLabel: string
+): ModuleProgressState {
+  if (!canAccessScreen(state, screenId)) {
+    return state;
+  }
+  const existing = state.lastVisitedSections[screenId];
+  if (existing?.sectionId === sectionId && existing?.sectionLabel === sectionLabel) {
+    return state;
+  }
+  return {
+    ...state,
+    lastActiveLesson: isLessonId(screenId) ? screenId : state.lastActiveLesson,
+    lastVisitedSections: {
+      ...state.lastVisitedSections,
+      [screenId]: {
+        sectionId,
+        sectionLabel,
+        updatedAt: new Date().toISOString(),
+      },
+    },
+  };
+}
+
+export function recordReflection(
+  state: ModuleProgressState,
+  patch: Partial<ReflectionRecord>
+): ModuleProgressState {
+  const nextText = patch.text !== undefined ? patch.text : state.reflection.text;
+  const nextSampleViewed =
+    patch.sampleViewed !== undefined ? patch.sampleViewed : state.reflection.sampleViewed;
+  const nextUpdatedAt =
+    patch.updatedAt !== undefined
+      ? patch.updatedAt
+      : patch.text !== undefined
+      ? nextText.trim()
+        ? new Date().toISOString()
+        : null
+      : state.reflection.updatedAt;
+
+  return {
+    ...state,
+    reflection: {
+      text: nextText,
+      updatedAt: nextUpdatedAt,
+      sampleViewed: nextSampleViewed,
+    },
   };
 }
 
@@ -343,6 +505,7 @@ export function recordActivityCompleted(
 
   const updated: ModuleProgressState = {
     ...state,
+    lastActiveLesson: lessonId,
     lessons: {
       ...state.lessons,
       [lessonId]: {
@@ -381,6 +544,7 @@ export function recordLessonAssessmentResult(
 
   const updated: ModuleProgressState = {
     ...state,
+    lastActiveLesson: lessonId,
     lessons: {
       ...state.lessons,
       [lessonId]: {
@@ -407,11 +571,19 @@ export function recordFinalAssessmentResult(
     return state;
   }
 
+  const passedNow = result.percentage >= FORMATIVE_MASTERY_THRESHOLD_PERCENT;
+  const bestScore =
+    state.bestFinalAssessmentScore === null
+      ? result.percentage
+      : Math.max(state.bestFinalAssessmentScore, result.percentage);
+
   return reconcileModuleProgress({
     ...state,
     assessmentAttempts: state.assessmentAttempts + 1,
     latestAssessment: result,
-    finalAssessmentCompleted: true,
+    finalAssessmentPassed: state.finalAssessmentPassed || passedNow,
+    finalAssessmentCompleted: state.finalAssessmentPassed || passedNow,
+    bestFinalAssessmentScore: bestScore,
   });
 }
 
@@ -422,8 +594,8 @@ export function calculateOverallModuleProgress(state: ModuleProgressState): {
   percentage: number;
 } {
   const completedLessonsCount = LESSON_IDS.filter((id) => state.lessons[id]?.completed).length;
-  const totalTrackableCount = LESSON_IDS.length + 1; // 5 lessons + Final Module Assessment
-  const completedCount = completedLessonsCount + (state.finalAssessmentCompleted ? 1 : 0);
+  const totalTrackableCount = LESSON_IDS.length + 1; // 5 lessons + Final Module Assessment passed
+  const completedCount = completedLessonsCount + (state.finalAssessmentPassed ? 1 : 0);
   const percentage = Math.round((completedCount / totalTrackableCount) * 100);
 
   return {

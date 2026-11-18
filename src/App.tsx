@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AlertCircle, X } from 'lucide-react';
 import { Sidebar } from './components/Layout/Sidebar';
 import { MobileHeader } from './components/Layout/MobileHeader';
+import { ReferenceLibraryModal } from './components/common/ReferenceLibraryModal';
 import { WelcomeScreen } from './components/screens/WelcomeScreen';
 import { Lesson1Forces } from './components/screens/Lesson1Forces';
 import { Lesson2FirstLaw } from './components/screens/Lesson2FirstLaw';
@@ -9,6 +10,7 @@ import { Lesson3SecondLaw } from './components/screens/Lesson3SecondLaw';
 import { Lesson4ThirdLaw } from './components/screens/Lesson4ThirdLaw';
 import { Lesson5Synthesis } from './components/screens/Lesson5Synthesis';
 import { AssessmentScreen } from './components/screens/AssessmentScreen';
+import { CompletionScreen } from './components/screens/CompletionScreen';
 import {
   AssessmentResultSummary,
   MODULE_SCREEN_IDS,
@@ -17,13 +19,18 @@ import {
 import {
   attemptNavigate,
   canAccessScreen,
+  getResumeTarget,
   LESSON_IDS,
   LessonId,
+  LOCKED_COMPLETION_MESSAGE,
   LOCKED_LESSON_MESSAGE,
   ModuleProgressState,
   recordActivityCompleted,
   recordFinalAssessmentResult,
   recordLessonAssessmentResult,
+  recordReflection,
+  recordSectionVisit,
+  ReflectionRecord,
 } from './physics/progress';
 import {
   loadProgressState,
@@ -86,17 +93,18 @@ export default function App() {
       if (check.allowed) {
         return { progress: check.nextState, initialLockNotice: null };
       }
-      // Requested screen via URL/hash is locked: enforce restriction and sync URL back
       window.history.replaceState(
         { screenId: loaded.currentScreen },
         '',
         buildUrlForScreen(loaded.currentScreen)
       );
-      return { progress: loaded, initialLockNotice: LOCKED_LESSON_MESSAGE };
+      return {
+        progress: loaded,
+        initialLockNotice: check.lockReason ?? LOCKED_LESSON_MESSAGE,
+      };
     }
 
     if (hasExplicitScreenParam) {
-      // Unknown ?screen= parameter -> normalize to current safe screen
       window.history.replaceState(
         { screenId: loaded.currentScreen },
         '',
@@ -110,13 +118,64 @@ export default function App() {
   const [progress, setProgress] = useState<ModuleProgressState>(initialBoot.progress);
   const [lockNotice, setLockNotice] = useState<string | null>(initialBoot.initialLockNotice);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isReferenceOpen, setIsReferenceOpen] = useState(false);
+  const [pendingScrollSectionId, setPendingScrollSectionId] = useState<string | null>(null);
 
+  const mainRef = useRef<HTMLElement | null>(null);
   const progressRef = useRef(progress);
   progressRef.current = progress;
 
   useEffect(() => {
     saveProgressState(progress);
   }, [progress]);
+
+  // Smoothly scroll to a bookmarked section when resuming learning
+  useEffect(() => {
+    if (!pendingScrollSectionId) return;
+    const targetId = pendingScrollSectionId;
+    const timer = window.setTimeout(() => {
+      const el = document.getElementById(targetId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'auto', block: 'start' });
+      }
+      setPendingScrollSectionId(null);
+    }, 60);
+    return () => window.clearTimeout(timer);
+  }, [pendingScrollSectionId, progress.currentScreen]);
+
+  // Automatically record visible lesson sections for accurate "Resume Learning" bookmarks
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof IntersectionObserver === 'undefined') return;
+    const container = mainRef.current;
+    if (!container) return;
+
+    const sectionEls = Array.from(
+      container.querySelectorAll<HTMLElement>('[data-section-id]')
+    );
+    if (sectionEls.length === 0) return;
+
+    const currentScreen = progress.currentScreen;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries.find((entry) => entry.isIntersecting);
+        if (!visible) return;
+        const target = visible.target as HTMLElement;
+        const sectionId = target.dataset.sectionId;
+        const sectionLabel = target.dataset.sectionLabel;
+        if (sectionId && sectionLabel) {
+          setProgress((prev) =>
+            prev.currentScreen === currentScreen
+              ? recordSectionVisit(prev, currentScreen, sectionId, sectionLabel)
+              : prev
+          );
+        }
+      },
+      { rootMargin: '-15% 0px -65% 0px', threshold: 0.05 }
+    );
+
+    sectionEls.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [progress.currentScreen]);
 
   // Enforce sequential locking on browser Back/Forward history navigation
   useEffect(() => {
@@ -135,7 +194,7 @@ export default function App() {
         setProgress(check.nextState);
         setLockNotice(null);
       } else {
-        setLockNotice(LOCKED_LESSON_MESSAGE);
+        setLockNotice(check.lockReason ?? LOCKED_LESSON_MESSAGE);
         window.history.replaceState(
           { screenId: current.currentScreen },
           '',
@@ -148,11 +207,13 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  const showLockedNotice = useCallback(() => {
-    setLockNotice(LOCKED_LESSON_MESSAGE);
+  const showLockedNotice = useCallback((targetScreen?: ScreenId) => {
+    setLockNotice(
+      targetScreen === 'completion' ? LOCKED_COMPLETION_MESSAGE : LOCKED_LESSON_MESSAGE
+    );
   }, []);
 
-  const navigateTo = useCallback((screenId: ScreenId) => {
+  const navigateTo = useCallback((screenId: ScreenId, scrollSectionId?: string) => {
     const check = attemptNavigate(progressRef.current, screenId);
     if (!check.allowed) {
       setLockNotice(check.lockReason ?? LOCKED_LESSON_MESSAGE);
@@ -163,11 +224,20 @@ export default function App() {
     if (typeof window !== 'undefined' && screenId !== progressRef.current.currentScreen) {
       window.history.pushState({ screenId }, '', buildUrlForScreen(screenId));
     }
-    window.scrollTo({ top: 0, behavior: 'auto' });
+    if (scrollSectionId) {
+      setPendingScrollSectionId(scrollSectionId);
+    } else {
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    }
   }, []);
 
   const handleStartLearning = useCallback(() => {
     navigateTo('lesson-1');
+  }, [navigateTo]);
+
+  const handleResumeLearning = useCallback(() => {
+    const target = getResumeTarget(progressRef.current);
+    navigateTo(target.screenId, target.sectionId);
   }, [navigateTo]);
 
   const handleActivityCompleted = useCallback((lessonId: LessonId, activityId: string) => {
@@ -186,12 +256,21 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'auto' });
   }, []);
 
+  const handleChangeReflection = useCallback((patch: Partial<ReflectionRecord>) => {
+    setProgress((prev) => recordReflection(prev, patch));
+  }, []);
+
   const handleResetProgress = useCallback(() => {
     const fresh = resetProgressState();
     setProgress(fresh);
     setLockNotice(null);
+    setPendingScrollSectionId(null);
     if (typeof window !== 'undefined') {
-      window.history.replaceState({ screenId: fresh.currentScreen }, '', buildUrlForScreen(fresh.currentScreen));
+      window.history.replaceState(
+        { screenId: fresh.currentScreen },
+        '',
+        buildUrlForScreen(fresh.currentScreen)
+      );
     }
     window.scrollTo({ top: 0, behavior: 'auto' });
   }, []);
@@ -213,9 +292,10 @@ export default function App() {
       <Sidebar
         progressState={progress}
         lockNotice={lockNotice}
-        onNavigate={navigateTo}
-        onLockedAttempt={() => showLockedNotice()}
+        onNavigate={(id) => navigateTo(id)}
+        onLockedAttempt={(targetId) => showLockedNotice(targetId)}
         onResetProgress={handleResetProgress}
+        onOpenReference={() => setIsReferenceOpen(true)}
         isOpenMobile={isMobileMenuOpen}
         onCloseMobile={() => setIsMobileMenuOpen(false)}
       />
@@ -224,9 +304,11 @@ export default function App() {
         <MobileHeader
           progressState={progress}
           onOpenMenu={() => setIsMobileMenuOpen(true)}
+          onOpenReference={() => setIsReferenceOpen(true)}
         />
 
         <main
+          ref={mainRef}
           id="main-content"
           className="flex-1 w-full max-w-[880px] mx-auto px-4 sm:px-8 lg:px-12 py-8 sm:py-10"
         >
@@ -257,8 +339,11 @@ export default function App() {
               <WelcomeScreen
                 progressState={progress}
                 onStartLearning={handleStartLearning}
-                onNavigate={navigateTo}
-                onLockedAttempt={() => showLockedNotice()}
+                onResumeLearning={handleResumeLearning}
+                onNavigate={(id) => navigateTo(id)}
+                onLockedAttempt={(targetId) => showLockedNotice(targetId)}
+                onOpenReference={() => setIsReferenceOpen(true)}
+                onRestartCourse={handleResetProgress}
               />
             )}
 
@@ -266,10 +351,11 @@ export default function App() {
               <Lesson1Forces
                 lessonRecord={progress.lessons['lesson-1']}
                 isNextLocked={!canAccessScreen(progress, 'lesson-2')}
-                onNavigate={navigateTo}
+                onNavigate={(id) => navigateTo(id)}
                 onActivityCompleted={(actId) => handleActivityCompleted('lesson-1', actId)}
                 onAssessmentSubmitted={(res) => handleLessonAssessmentSubmitted('lesson-1', res)}
-                onLockedNextAttempt={showLockedNotice}
+                onLockedNextAttempt={() => showLockedNotice('lesson-2')}
+                onOpenReference={() => setIsReferenceOpen(true)}
               />
             )}
 
@@ -277,10 +363,11 @@ export default function App() {
               <Lesson2FirstLaw
                 lessonRecord={progress.lessons['lesson-2']}
                 isNextLocked={!canAccessScreen(progress, 'lesson-3')}
-                onNavigate={navigateTo}
+                onNavigate={(id) => navigateTo(id)}
                 onActivityCompleted={(actId) => handleActivityCompleted('lesson-2', actId)}
                 onAssessmentSubmitted={(res) => handleLessonAssessmentSubmitted('lesson-2', res)}
-                onLockedNextAttempt={showLockedNotice}
+                onLockedNextAttempt={() => showLockedNotice('lesson-3')}
+                onOpenReference={() => setIsReferenceOpen(true)}
               />
             )}
 
@@ -288,10 +375,11 @@ export default function App() {
               <Lesson3SecondLaw
                 lessonRecord={progress.lessons['lesson-3']}
                 isNextLocked={!canAccessScreen(progress, 'lesson-4')}
-                onNavigate={navigateTo}
+                onNavigate={(id) => navigateTo(id)}
                 onActivityCompleted={(actId) => handleActivityCompleted('lesson-3', actId)}
                 onAssessmentSubmitted={(res) => handleLessonAssessmentSubmitted('lesson-3', res)}
-                onLockedNextAttempt={showLockedNotice}
+                onLockedNextAttempt={() => showLockedNotice('lesson-4')}
+                onOpenReference={() => setIsReferenceOpen(true)}
               />
             )}
 
@@ -299,21 +387,25 @@ export default function App() {
               <Lesson4ThirdLaw
                 lessonRecord={progress.lessons['lesson-4']}
                 isNextLocked={!canAccessScreen(progress, 'lesson-5')}
-                onNavigate={navigateTo}
+                onNavigate={(id) => navigateTo(id)}
                 onActivityCompleted={(actId) => handleActivityCompleted('lesson-4', actId)}
                 onAssessmentSubmitted={(res) => handleLessonAssessmentSubmitted('lesson-4', res)}
-                onLockedNextAttempt={showLockedNotice}
+                onLockedNextAttempt={() => showLockedNotice('lesson-5')}
+                onOpenReference={() => setIsReferenceOpen(true)}
               />
             )}
 
             {progress.currentScreen === 'lesson-5' && (
               <Lesson5Synthesis
                 lessonRecord={progress.lessons['lesson-5']}
+                reflection={progress.reflection}
                 isNextLocked={!canAccessScreen(progress, 'assessment')}
-                onNavigate={navigateTo}
+                onNavigate={(id) => navigateTo(id)}
                 onActivityCompleted={(actId) => handleActivityCompleted('lesson-5', actId)}
                 onAssessmentSubmitted={(res) => handleLessonAssessmentSubmitted('lesson-5', res)}
-                onLockedNextAttempt={showLockedNotice}
+                onLockedNextAttempt={() => showLockedNotice('assessment')}
+                onChangeReflection={handleChangeReflection}
+                onOpenReference={() => setIsReferenceOpen(true)}
               />
             )}
 
@@ -322,13 +414,28 @@ export default function App() {
                 completedLessonsCount={completedLessonsCount}
                 assessmentAttempts={progress.assessmentAttempts}
                 latestAssessment={progress.latestAssessment}
+                moduleCompleted={progress.moduleCompleted}
                 onSubmitAssessment={handleSubmitFinalAssessment}
-                onNavigate={navigateTo}
+                onNavigate={(id) => navigateTo(id)}
+              />
+            )}
+
+            {progress.currentScreen === 'completion' && (
+              <CompletionScreen
+                progressState={progress}
+                onNavigate={(id) => navigateTo(id)}
+                onRestartModule={handleResetProgress}
+                onOpenReference={() => setIsReferenceOpen(true)}
               />
             )}
           </div>
         </main>
       </div>
+
+      <ReferenceLibraryModal
+        isOpen={isReferenceOpen}
+        onClose={() => setIsReferenceOpen(false)}
+      />
     </div>
   );
 }

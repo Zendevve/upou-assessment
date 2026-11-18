@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { animate } from 'motion';
-import { AlertCircle, Check, Lock, RotateCcw, X } from 'lucide-react';
+import { AlertCircle, BookOpen, Check, Lock, RotateCcw, X } from 'lucide-react';
 import { COURSE_INFO, LESSON_NAV_ITEMS } from '../../data/moduleContent';
 import { ScreenId } from '../../physics/calculations';
 import {
@@ -8,6 +8,7 @@ import {
   calculateOverallModuleProgress,
   canAccessScreen,
   isLessonId,
+  LOCKED_COMPLETION_MESSAGE,
   LOCKED_LESSON_MESSAGE,
   ModuleProgressState,
 } from '../../physics/progress';
@@ -25,6 +26,7 @@ interface SidebarProps {
   onNavigate: (screenId: ScreenId) => void;
   onLockedAttempt: (targetScreen: ScreenId) => void;
   onResetProgress: () => void;
+  onOpenReference: () => void;
   isOpenMobile: boolean;
   onCloseMobile: () => void;
 }
@@ -47,7 +49,7 @@ const LessonProgressRing: React.FC<{
       <span
         role="img"
         aria-label={`${label}: Locked`}
-        className="relative inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[#CBD5E1] bg-[#F1F5F9] text-[#94A3B8]"
+        className="relative inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-[#CBD5E1] bg-[#E2E8F0]/70 text-[#475569]"
       >
         <Lock className="h-3 w-3" aria-hidden="true" />
       </span>
@@ -98,6 +100,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onNavigate,
   onLockedAttempt,
   onResetProgress,
+  onOpenReference,
   isOpenMobile,
   onCloseMobile,
 }) => {
@@ -436,7 +439,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
               itemPct = summary.percentage;
               itemCompleted = summary.completed;
             } else if (item.id === 'assessment') {
-              itemCompleted = progressState.finalAssessmentCompleted;
+              itemCompleted = progressState.finalAssessmentPassed;
+              itemPct = itemCompleted ? 100 : 0;
+            } else if (item.id === 'completion') {
+              itemCompleted = progressState.moduleCompleted;
               itemPct = itemCompleted ? 100 : 0;
             }
 
@@ -448,8 +454,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
               ? 'Overview'
               : `${itemPct}%`;
 
+            const lockHint =
+              item.id === 'completion' ? LOCKED_COMPLETION_MESSAGE : LOCKED_LESSON_MESSAGE;
             const buttonAriaLabel = isLocked
-              ? `${item.shortLabel}: ${item.title} — Locked. ${LOCKED_LESSON_MESSAGE}`
+              ? `${item.shortLabel}: ${item.title} — Locked. ${lockHint}`
               : `${item.shortLabel}: ${item.title} — ${item.shortLabel} progress: ${itemPct}%`;
 
             return (
@@ -466,7 +474,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   data-progress-percent={itemPct}
                   className={`group w-full text-left flex items-center gap-3 rounded-md px-3 py-2.5 min-h-[44px] border transition-colors duration-150 ${
                     isLocked
-                      ? 'border-transparent bg-transparent text-[#94A3B8] opacity-75 cursor-not-allowed'
+                      ? 'border-transparent bg-slate-100/70 text-[#475569] cursor-not-allowed'
                       : isCurrent
                       ? 'tactile-press bg-[#EFF6FF] text-[#172033] border-[#BFDBFE] shadow-[0_1px_2px_rgba(37,99,235,0.08)]'
                       : 'tactile-press text-[#334155] border-transparent hover:bg-white hover:border-[#E2E8F0]'
@@ -482,7 +490,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <span className="min-w-0 flex-1">
                     <span
                       className={`block text-xs tracking-[0.008em] ${
-                        isLocked ? 'text-[#94A3B8]' : 'text-[#64748B]'
+                        isLocked ? 'text-[#475569]' : 'text-[#475569]'
                       }`}
                     >
                       {item.shortLabel} · {item.duration} · {statusLabel}
@@ -490,7 +498,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <span
                       className={`mt-0.5 block text-sm leading-snug ${
                         isLocked
-                          ? 'font-medium text-[#64748B]'
+                          ? 'font-medium text-[#475569]'
                           : isCurrent
                           ? 'font-semibold text-[#1E3A8A]'
                           : 'font-medium text-[#172033]'
@@ -506,8 +514,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </ul>
       </nav>
 
-      {/* Footer Utility: Safe Progress Reset */}
-      <div className="border-t border-[#E2E8F0] px-4 py-4">
+      {/* Footer Utility: Reference Library & Safe Progress Reset */}
+      <div className="border-t border-[#E2E8F0] px-4 py-4 space-y-2.5">
+        <button
+          type="button"
+          onClick={() => {
+            onOpenReference();
+            onCloseMobile();
+          }}
+          className="tactile-press w-full inline-flex items-center justify-center gap-2 rounded-md border border-[#BFDBFE] bg-[#EFF6FF] px-3 py-2 text-xs font-semibold text-[#1E40AF] hover:bg-[#DBEAFE] min-h-[40px]"
+        >
+          <BookOpen className="h-3.5 w-3.5" aria-hidden="true" />
+          <span>Glossary & Formulas</span>
+        </button>
+
         {!confirmReset ? (
           <button
             type="button"

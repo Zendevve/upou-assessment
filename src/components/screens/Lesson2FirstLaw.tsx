@@ -3,11 +3,17 @@ import { LessonFooterNav } from '../Layout/LessonFooterNav';
 import {
   KnowledgeCheck,
   LessonHeader,
+  LessonIntro,
+  LessonSummary,
   MisconceptionCallout,
-  ObjectiveBox,
 } from '../common/Blocks';
 import { LessonAssessment } from '../common/LessonAssessment';
 import { InertiaScenario } from '../activities/InertiaScenario';
+import {
+  LESSON_INTROS,
+  LESSON_SUMMARIES,
+  OPTIONAL_CHECKPOINTS,
+} from '../../data/moduleContent';
 import { AssessmentResultSummary, ScreenId } from '../../physics/calculations';
 import { LessonProgressRecord } from '../../physics/progress';
 
@@ -18,6 +24,7 @@ interface LessonProps {
   onActivityCompleted: (activityId: string) => void;
   onAssessmentSubmitted: (result: AssessmentResultSummary) => void;
   onLockedNextAttempt: () => void;
+  onOpenReference: () => void;
 }
 
 export const Lesson2FirstLaw: React.FC<LessonProps> = ({
@@ -27,7 +34,10 @@ export const Lesson2FirstLaw: React.FC<LessonProps> = ({
   onActivityCompleted,
   onAssessmentSubmitted,
   onLockedNextAttempt,
+  onOpenReference,
 }) => {
+  const checkpoint = OPTIONAL_CHECKPOINTS['lesson-2-checkpoint'];
+
   return (
     <article>
       <LessonHeader
@@ -38,9 +48,14 @@ export const Lesson2FirstLaw: React.FC<LessonProps> = ({
         isCompleted={lessonRecord.completed}
       />
 
-      <ObjectiveBox objective="Explain inertia and its relationship with mass, and describe Newton's First Law using familiar real-world situations." />
+      <LessonIntro intro={LESSON_INTROS['lesson-2']} />
 
-      <section className="mt-8 space-y-4 text-sm sm:text-base text-[#334155]">
+      <section
+        id="l2-first-law"
+        data-section-id="l2-first-law"
+        data-section-label="1. Newton's First Law"
+        className="mt-8 space-y-4 text-sm sm:text-base text-[#334155]"
+      >
         <h2 className="text-xl font-semibold text-[#172033]">
           1. Newton’s First Law of Motion
         </h2>
@@ -70,9 +85,23 @@ export const Lesson2FirstLaw: React.FC<LessonProps> = ({
             </p>
           </div>
         </div>
+
+        <KnowledgeCheck
+          id={checkpoint.id}
+          title={checkpoint.title}
+          type={checkpoint.type}
+          question={checkpoint.question}
+          options={checkpoint.options}
+          isOptionalPractice
+        />
       </section>
 
-      <section className="mt-8 space-y-4 text-sm sm:text-base text-[#334155]">
+      <section
+        id="l2-inertia-mass"
+        data-section-id="l2-inertia-mass"
+        data-section-label="2. Inertia and Mass"
+        className="mt-8 space-y-4 text-sm sm:text-base text-[#334155]"
+      >
         <h2 className="text-xl font-semibold text-[#172033]">
           2. Inertia and Its Relationship with Mass
         </h2>
@@ -89,7 +118,12 @@ export const Lesson2FirstLaw: React.FC<LessonProps> = ({
         />
       </section>
 
-      <section className="mt-8">
+      <section
+        id="l2-bus-scenario"
+        data-section-id="l2-bus-scenario"
+        data-section-label="3. Braking Bus Scenario"
+        className="mt-8"
+      >
         <h2 className="text-xl font-semibold text-[#172033]">
           3. Interactive Scenario: Why Do Passengers Lurch Forward?
         </h2>
@@ -134,12 +168,24 @@ export const Lesson2FirstLaw: React.FC<LessonProps> = ({
         onPassed={() => onActivityCompleted('lesson-2-kc')}
       />
 
-      <LessonAssessment
-        lessonId="lesson-2"
-        lessonRecord={lessonRecord}
-        onSubmitAssessment={onAssessmentSubmitted}
-        onNavigate={onNavigate}
+      <LessonSummary
+        lessonLabel="Lesson 2"
+        summary={LESSON_SUMMARIES['lesson-2']}
+        onOpenReference={onOpenReference}
       />
+
+      <section
+        id="l2-assessment"
+        data-section-id="l2-assessment"
+        data-section-label="Lesson 2 Mastery Assessment"
+      >
+        <LessonAssessment
+          lessonId="lesson-2"
+          lessonRecord={lessonRecord}
+          onSubmitAssessment={onAssessmentSubmitted}
+          onNavigate={onNavigate}
+        />
+      </section>
 
       <LessonFooterNav
         currentScreen="lesson-2"

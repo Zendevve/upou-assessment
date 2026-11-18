@@ -41,6 +41,7 @@ export const MODULE_SCREEN_IDS = [
   'lesson-4',
   'lesson-5',
   'assessment',
+  'completion',
 ] as const;
 
 export type ScreenId = (typeof MODULE_SCREEN_IDS)[number];

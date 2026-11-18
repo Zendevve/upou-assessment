@@ -4,12 +4,18 @@ import {
   KeyConceptGrid,
   KnowledgeCheck,
   LessonHeader,
+  LessonIntro,
+  LessonSummary,
   MisconceptionCallout,
-  ObjectiveBox,
 } from '../common/Blocks';
 import { LessonAssessment } from '../common/LessonAssessment';
 import { ForceComparisonDiagrams } from '../diagrams/ForceComparisonDiagrams';
 import { NetForceCalculator } from '../activities/NetForceCalculator';
+import {
+  LESSON_INTROS,
+  LESSON_SUMMARIES,
+  OPTIONAL_CHECKPOINTS,
+} from '../../data/moduleContent';
 import { AssessmentResultSummary, ScreenId } from '../../physics/calculations';
 import { LessonProgressRecord } from '../../physics/progress';
 
@@ -20,6 +26,7 @@ interface LessonProps {
   onActivityCompleted: (activityId: string) => void;
   onAssessmentSubmitted: (result: AssessmentResultSummary) => void;
   onLockedNextAttempt: () => void;
+  onOpenReference: () => void;
 }
 
 export const Lesson1Forces: React.FC<LessonProps> = ({
@@ -29,7 +36,10 @@ export const Lesson1Forces: React.FC<LessonProps> = ({
   onActivityCompleted,
   onAssessmentSubmitted,
   onLockedNextAttempt,
+  onOpenReference,
 }) => {
+  const checkpoint = OPTIONAL_CHECKPOINTS['lesson-1-checkpoint'];
+
   return (
     <article>
       <LessonHeader
@@ -40,9 +50,14 @@ export const Lesson1Forces: React.FC<LessonProps> = ({
         isCompleted={lessonRecord.completed}
       />
 
-      <ObjectiveBox objective="Define force and distinguish between balanced and unbalanced forces." />
+      <LessonIntro intro={LESSON_INTROS['lesson-1']} />
 
-      <section className="mt-8 space-y-4 text-sm sm:text-base text-[#334155]">
+      <section
+        id="l1-what-is-force"
+        data-section-id="l1-what-is-force"
+        data-section-label="1. What Is a Force?"
+        className="mt-8 space-y-4 text-sm sm:text-base text-[#334155]"
+      >
         <h2 className="text-xl font-semibold text-[#172033]">1. What Is a Force?</h2>
         <p>
           Whenever you push a shopping cart, pull open a door, or kick a football, you are applying a <strong>force</strong>. In physics, a force is an <strong>interaction</strong> (a push or a pull) between two objects that can change an object’s motion.
@@ -77,7 +92,12 @@ export const Lesson1Forces: React.FC<LessonProps> = ({
         />
       </section>
 
-      <section className="mt-8 space-y-4 text-sm sm:text-base text-[#334155]">
+      <section
+        id="l1-combining-forces"
+        data-section-id="l1-combining-forces"
+        data-section-label="2. Combining Forces"
+        className="mt-8 space-y-4 text-sm sm:text-base text-[#334155]"
+      >
         <h2 className="text-xl font-semibold text-[#172033]">
           2. Combining Forces: Balanced vs. Unbalanced
         </h2>
@@ -100,9 +120,23 @@ export const Lesson1Forces: React.FC<LessonProps> = ({
           statement="An object with zero net force must be standing still."
           explanation="Not necessarily! An object experiencing zero net force (balanced forces) has constant velocity—so if it is at rest, it stays at rest, and if it is already moving at 10 m/s in a straight line, it keeps moving at 10 m/s."
         />
+
+        <KnowledgeCheck
+          id={checkpoint.id}
+          title={checkpoint.title}
+          type={checkpoint.type}
+          question={checkpoint.question}
+          options={checkpoint.options}
+          isOptionalPractice
+        />
       </section>
 
-      <section className="mt-8">
+      <section
+        id="l1-practice"
+        data-section-id="l1-practice"
+        data-section-label="3. Net Force Practice"
+        className="mt-8"
+      >
         <h2 className="text-xl font-semibold text-[#172033]">
           3. Practice: Build and Combine Horizontal Forces
         </h2>
@@ -147,12 +181,24 @@ export const Lesson1Forces: React.FC<LessonProps> = ({
         onPassed={() => onActivityCompleted('lesson-1-kc')}
       />
 
-      <LessonAssessment
-        lessonId="lesson-1"
-        lessonRecord={lessonRecord}
-        onSubmitAssessment={onAssessmentSubmitted}
-        onNavigate={onNavigate}
+      <LessonSummary
+        lessonLabel="Lesson 1"
+        summary={LESSON_SUMMARIES['lesson-1']}
+        onOpenReference={onOpenReference}
       />
+
+      <section
+        id="l1-assessment"
+        data-section-id="l1-assessment"
+        data-section-label="Lesson 1 Mastery Assessment"
+      >
+        <LessonAssessment
+          lessonId="lesson-1"
+          lessonRecord={lessonRecord}
+          onSubmitAssessment={onAssessmentSubmitted}
+          onNavigate={onNavigate}
+        />
+      </section>
 
       <LessonFooterNav
         currentScreen="lesson-1"

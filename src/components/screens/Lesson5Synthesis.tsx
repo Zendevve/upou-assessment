@@ -1,29 +1,48 @@
 import React from 'react';
 import { LessonFooterNav } from '../Layout/LessonFooterNav';
-import { LessonHeader, ObjectiveBox } from '../common/Blocks';
+import {
+  KnowledgeCheck,
+  LessonHeader,
+  LessonIntro,
+  LessonSummary,
+} from '../common/Blocks';
 import { LessonAssessment } from '../common/LessonAssessment';
 import { SynthesisForceDiagram } from '../diagrams/ForceComparisonDiagrams';
 import { IntegratedSynthesisActivity } from '../activities/IntegratedSynthesisActivity';
+import { ReflectionActivity } from '../activities/ReflectionActivity';
+import {
+  LESSON_INTROS,
+  LESSON_SUMMARIES,
+  OPTIONAL_CHECKPOINTS,
+} from '../../data/moduleContent';
 import { AssessmentResultSummary, ScreenId } from '../../physics/calculations';
-import { LessonProgressRecord } from '../../physics/progress';
+import { LessonProgressRecord, ReflectionRecord } from '../../physics/progress';
 
-interface LessonProps {
+interface Lesson5Props {
   lessonRecord: LessonProgressRecord;
+  reflection: ReflectionRecord;
   isNextLocked: boolean;
   onNavigate: (id: ScreenId) => void;
   onActivityCompleted: (activityId: string) => void;
   onAssessmentSubmitted: (result: AssessmentResultSummary) => void;
   onLockedNextAttempt: () => void;
+  onChangeReflection: (patch: Partial<ReflectionRecord>) => void;
+  onOpenReference: () => void;
 }
 
-export const Lesson5Synthesis: React.FC<LessonProps> = ({
+export const Lesson5Synthesis: React.FC<Lesson5Props> = ({
   lessonRecord,
+  reflection,
   isNextLocked,
   onNavigate,
   onActivityCompleted,
   onAssessmentSubmitted,
   onLockedNextAttempt,
+  onChangeReflection,
+  onOpenReference,
 }) => {
+  const checkpoint = OPTIONAL_CHECKPOINTS['lesson-5-checkpoint'];
+
   return (
     <article>
       <LessonHeader
@@ -34,9 +53,14 @@ export const Lesson5Synthesis: React.FC<LessonProps> = ({
         isCompleted={lessonRecord.completed}
       />
 
-      <ObjectiveBox objective="Interpret simple real-world force-and-motion situations using Newton's laws." />
+      <LessonIntro intro={LESSON_INTROS['lesson-5']} />
 
-      <section className="mt-8 space-y-4 text-sm sm:text-base text-[#334155]">
+      <section
+        id="l5-scenario"
+        data-section-id="l5-scenario"
+        data-section-label="1. Integrated Scenario"
+        className="mt-8 space-y-4 text-sm sm:text-base text-[#334155]"
+      >
         <h2 className="text-xl font-semibold text-[#172033]">
           1. Integrated Real-World Scenario
         </h2>
@@ -65,12 +89,27 @@ export const Lesson5Synthesis: React.FC<LessonProps> = ({
         </ul>
 
         <SynthesisForceDiagram />
+
+        <KnowledgeCheck
+          id={checkpoint.id}
+          title={checkpoint.title}
+          type={checkpoint.type}
+          question={checkpoint.question}
+          options={checkpoint.options}
+          isOptionalPractice
+        />
       </section>
 
-      <IntegratedSynthesisActivity
-        isCompleted={Boolean(lessonRecord.activities['integrated-synthesis'])}
-        onCompleted={() => onActivityCompleted('integrated-synthesis')}
-      />
+      <section
+        id="l5-guided-practice"
+        data-section-id="l5-guided-practice"
+        data-section-label="2. 5-Step Guided Practice"
+      >
+        <IntegratedSynthesisActivity
+          isCompleted={Boolean(lessonRecord.activities['integrated-synthesis'])}
+          onCompleted={() => onActivityCompleted('integrated-synthesis')}
+        />
+      </section>
 
       {/* Reference Solution Summary */}
       <section aria-labelledby="synth-summary-heading" className="my-8 rounded-md border border-[#E2E8F0] bg-[#F8FAFC] p-5">
@@ -79,30 +118,48 @@ export const Lesson5Synthesis: React.FC<LessonProps> = ({
         </h2>
         <dl className="mt-3 grid gap-2 sm:grid-cols-2 text-sm">
           <div className="bg-white rounded border border-[#E2E8F0] p-3">
-            <dt className="text-xs font-medium text-[#64748B]">Horizontal Forces</dt>
+            <dt className="text-xs font-medium text-[#475569]">Horizontal Forces</dt>
             <dd className="mt-0.5 font-medium text-[#172033]">Applied: 15 N right · Friction: 5 N left</dd>
           </div>
           <div className="bg-white rounded border border-[#E2E8F0] p-3">
-            <dt className="text-xs font-medium text-[#64748B]">Horizontal Net Force</dt>
+            <dt className="text-xs font-medium text-[#475569]">Horizontal Net Force</dt>
             <dd className="mt-0.5 font-mono font-medium text-[#172033]">15 N - 5 N = 10 N right</dd>
           </div>
           <div className="bg-white rounded border border-[#E2E8F0] p-3">
-            <dt className="text-xs font-medium text-[#64748B]">Acceleration (a = F_net / m)</dt>
+            <dt className="text-xs font-medium text-[#475569]">Acceleration (a = F_net / m)</dt>
             <dd className="mt-0.5 font-mono font-medium text-[#172033]">10 N / 5 kg = 2 m/s² right</dd>
           </div>
           <div className="bg-white rounded border border-[#E2E8F0] p-3">
-            <dt className="text-xs font-medium text-[#64748B]">Governing Principle</dt>
+            <dt className="text-xs font-medium text-[#475569]">Governing Principle</dt>
             <dd className="mt-0.5 font-medium text-[#172033]">Newton’s Second Law (horizontal)</dd>
           </div>
         </dl>
       </section>
 
-      <LessonAssessment
-        lessonId="lesson-5"
-        lessonRecord={lessonRecord}
-        onSubmitAssessment={onAssessmentSubmitted}
-        onNavigate={onNavigate}
+      {/* End-of-module Reflection Activity */}
+      <ReflectionActivity
+        reflection={reflection}
+        onChangeReflection={onChangeReflection}
       />
+
+      <LessonSummary
+        lessonLabel="Lesson 5"
+        summary={LESSON_SUMMARIES['lesson-5']}
+        onOpenReference={onOpenReference}
+      />
+
+      <section
+        id="l5-assessment"
+        data-section-id="l5-assessment"
+        data-section-label="Lesson 5 Mastery Assessment"
+      >
+        <LessonAssessment
+          lessonId="lesson-5"
+          lessonRecord={lessonRecord}
+          onSubmitAssessment={onAssessmentSubmitted}
+          onNavigate={onNavigate}
+        />
+      </section>
 
       <LessonFooterNav
         currentScreen="lesson-5"

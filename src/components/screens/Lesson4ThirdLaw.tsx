@@ -3,11 +3,17 @@ import { LessonFooterNav } from '../Layout/LessonFooterNav';
 import {
   KnowledgeCheck,
   LessonHeader,
+  LessonIntro,
+  LessonSummary,
   MisconceptionCallout,
-  ObjectiveBox,
 } from '../common/Blocks';
 import { LessonAssessment } from '../common/LessonAssessment';
 import { ActionReactionActivity } from '../activities/ActionReactionActivity';
+import {
+  LESSON_INTROS,
+  LESSON_SUMMARIES,
+  OPTIONAL_CHECKPOINTS,
+} from '../../data/moduleContent';
 import { AssessmentResultSummary, ScreenId } from '../../physics/calculations';
 import { LessonProgressRecord } from '../../physics/progress';
 
@@ -18,6 +24,7 @@ interface LessonProps {
   onActivityCompleted: (activityId: string) => void;
   onAssessmentSubmitted: (result: AssessmentResultSummary) => void;
   onLockedNextAttempt: () => void;
+  onOpenReference: () => void;
 }
 
 export const Lesson4ThirdLaw: React.FC<LessonProps> = ({
@@ -27,7 +34,10 @@ export const Lesson4ThirdLaw: React.FC<LessonProps> = ({
   onActivityCompleted,
   onAssessmentSubmitted,
   onLockedNextAttempt,
+  onOpenReference,
 }) => {
+  const checkpoint = OPTIONAL_CHECKPOINTS['lesson-4-checkpoint'];
+
   return (
     <article>
       <LessonHeader
@@ -38,9 +48,14 @@ export const Lesson4ThirdLaw: React.FC<LessonProps> = ({
         isCompleted={lessonRecord.completed}
       />
 
-      <ObjectiveBox objective="Explain Newton's Third Law by identifying interacting objects and their force pairs." />
+      <LessonIntro intro={LESSON_INTROS['lesson-4']} />
 
-      <section className="mt-8 space-y-4 text-sm sm:text-base text-[#334155]">
+      <section
+        id="l4-force-pairs"
+        data-section-id="l4-force-pairs"
+        data-section-label="1. Forces Come in Pairs"
+        className="mt-8 space-y-4 text-sm sm:text-base text-[#334155]"
+      >
         <h2 className="text-xl font-semibold text-[#172033]">
           1. Forces Always Come in Pairs
         </h2>
@@ -69,7 +84,12 @@ export const Lesson4ThirdLaw: React.FC<LessonProps> = ({
         </ul>
       </section>
 
-      <section className="mt-8 space-y-4 text-sm sm:text-base text-[#334155]">
+      <section
+        id="l4-examples"
+        data-section-id="l4-examples"
+        data-section-label="2. Everyday Force Pairs"
+        className="mt-8 space-y-4 text-sm sm:text-base text-[#334155]"
+      >
         <h2 className="text-xl font-semibold text-[#172033]">
           2. Everyday Examples of Force Pairs
         </h2>
@@ -99,9 +119,23 @@ export const Lesson4ThirdLaw: React.FC<LessonProps> = ({
           statement="If action and reaction forces are equal and opposite, shouldn't they cancel to zero?"
           explanation="Action and reaction forces do not cancel because they act on different objects. Forces only cancel when two or more forces act on the SAME object."
         />
+
+        <KnowledgeCheck
+          id={checkpoint.id}
+          title={checkpoint.title}
+          type={checkpoint.type}
+          question={checkpoint.question}
+          options={checkpoint.options}
+          isOptionalPractice
+        />
       </section>
 
-      <section className="mt-8">
+      <section
+        id="l4-identifier"
+        data-section-id="l4-identifier"
+        data-section-label="3. Identify Action-Reaction Pairs"
+        className="mt-8"
+      >
         <h2 className="text-xl font-semibold text-[#172033]">
           3. Interactive Activity: Identify Action–Reaction Pairs
         </h2>
@@ -146,12 +180,24 @@ export const Lesson4ThirdLaw: React.FC<LessonProps> = ({
         onPassed={() => onActivityCompleted('lesson-4-kc')}
       />
 
-      <LessonAssessment
-        lessonId="lesson-4"
-        lessonRecord={lessonRecord}
-        onSubmitAssessment={onAssessmentSubmitted}
-        onNavigate={onNavigate}
+      <LessonSummary
+        lessonLabel="Lesson 4"
+        summary={LESSON_SUMMARIES['lesson-4']}
+        onOpenReference={onOpenReference}
       />
+
+      <section
+        id="l4-assessment"
+        data-section-id="l4-assessment"
+        data-section-label="Lesson 4 Mastery Assessment"
+      >
+        <LessonAssessment
+          lessonId="lesson-4"
+          lessonRecord={lessonRecord}
+          onSubmitAssessment={onAssessmentSubmitted}
+          onNavigate={onNavigate}
+        />
+      </section>
 
       <LessonFooterNav
         currentScreen="lesson-4"

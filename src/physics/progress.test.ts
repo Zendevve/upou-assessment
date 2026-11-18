@@ -6,10 +6,14 @@ import {
   calculateOverallModuleProgress,
   canAccessScreen,
   createInitialModuleProgress,
+  getResumeTarget,
+  LOCKED_COMPLETION_MESSAGE,
   LOCKED_LESSON_MESSAGE,
   recordActivityCompleted,
   recordFinalAssessmentResult,
   recordLessonAssessmentResult,
+  recordReflection,
+  recordSectionVisit,
 } from './progress';
 import { AssessmentResultSummary } from './calculations';
 import { sanitizeProgressState } from '../utils/storage';
@@ -36,6 +40,7 @@ test('fresh session starts with only Welcome and Lesson 1 unlocked', () => {
   assert.equal(canAccessScreen(state, 'lesson-4'), false);
   assert.equal(canAccessScreen(state, 'lesson-5'), false);
   assert.equal(canAccessScreen(state, 'assessment'), false);
+  assert.equal(canAccessScreen(state, 'completion'), false);
 
   const l1Prog = calculateLessonProgress('lesson-1', state.lessons['lesson-1']);
   assert.equal(l1Prog.percentage, 0);
@@ -52,6 +57,10 @@ test('attemptNavigate blocks locked lessons and returns required lock message', 
   const bypassFinal = attemptNavigate(state, 'assessment');
   assert.equal(bypassFinal.allowed, false);
   assert.equal(bypassFinal.lockReason, LOCKED_LESSON_MESSAGE);
+
+  const bypassCompletion = attemptNavigate(state, 'completion');
+  assert.equal(bypassCompletion.allowed, false);
+  assert.equal(bypassCompletion.lockReason, LOCKED_COMPLETION_MESSAGE);
 });
 
 test('lesson progress uses (completedActivities + passedAssessment) / (totalActivities + 1) * 100', () => {
@@ -115,9 +124,8 @@ test('retaking a passed assessment and scoring below 70% preserves passed status
   assert.equal(state.lessons['lesson-2'].unlocked, true);
 });
 
-test('lesson 5 (1 required activity + 1 assessment) calculates 0%, 50%, 100% and unlocks Final Assessment', () => {
+test('lesson 5 unlocks Final Assessment and >=70% on Final Assessment unlocks Completion screen', () => {
   let state = createInitialModuleProgress();
-  // Complete lessons 1..4
   for (const [id, acts] of [
     ['lesson-1', ['net-force-calculator', 'lesson-1-kc']],
     ['lesson-2', ['inertia-bus-scenario', 'lesson-2-kc']],
@@ -143,18 +151,57 @@ test('lesson 5 (1 required activity + 1 assessment) calculates 0%, 50%, 100% and
   assert.equal(l5.percentage, 100);
   assert.equal(l5.completed, true);
   assert.equal(canAccessScreen(state, 'assessment'), true);
+  assert.equal(canAccessScreen(state, 'completion'), false);
 
-  state = recordFinalAssessmentResult(state, makeAssessmentResult(100));
+  // Scoring 60% (<70%) does NOT unlock Completion screen
+  state = recordFinalAssessmentResult(state, makeAssessmentResult(60));
+  assert.equal(state.finalAssessmentPassed, false);
+  assert.equal(state.moduleCompleted, false);
+  assert.equal(canAccessScreen(state, 'completion'), false);
+  assert.equal(calculateOverallModuleProgress(state).completedCount, 5);
+
+  // Scoring 80% (>=70%) unlocks Completion screen
+  state = recordFinalAssessmentResult(state, makeAssessmentResult(80));
+  assert.equal(state.finalAssessmentPassed, true);
+  assert.equal(state.bestFinalAssessmentScore, 80);
+  assert.equal(state.moduleCompleted, true);
+  assert.equal(canAccessScreen(state, 'completion'), true);
   const overall = calculateOverallModuleProgress(state);
   assert.equal(overall.completedCount, 6);
   assert.equal(overall.percentage, 100);
+
+  // Retaking Final Assessment with lower score preserves completion & best score
+  state = recordFinalAssessmentResult(state, makeAssessmentResult(40));
+  assert.equal(state.finalAssessmentPassed, true);
+  assert.equal(state.bestFinalAssessmentScore, 80);
+  assert.equal(state.moduleCompleted, true);
+  assert.equal(canAccessScreen(state, 'completion'), true);
 });
 
-test('sanitizeProgressState blocks tampered localStorage attempting to unlock skipped lessons or assessment', () => {
+test('resume target, section bookmarking, and reflection persistence work deterministically', () => {
+  let state = createInitialModuleProgress();
+  assert.equal(getResumeTarget(state).hasStarted, false);
+  assert.equal(getResumeTarget(state).screenId, 'lesson-1');
+
+  state = attemptNavigate(state, 'lesson-1').nextState;
+  state = recordSectionVisit(state, 'lesson-1', 'l1-combining', '2. Combining Forces');
+  state = recordReflection(state, { text: 'My bike accelerates forward when the road pushes back.' });
+
+  const resume = getResumeTarget(state);
+  assert.equal(resume.hasStarted, true);
+  assert.equal(resume.screenId, 'lesson-1');
+  assert.equal(resume.sectionId, 'l1-combining');
+  assert.equal(resume.sectionLabel, '2. Combining Forces');
+  assert.ok(state.reflection.updatedAt);
+});
+
+test('sanitizeProgressState blocks tampered localStorage attempting to unlock skipped lessons or completion', () => {
   const tampered = {
     version: 2,
-    currentScreen: 'lesson-4',
+    currentScreen: 'completion',
     finalAssessmentUnlocked: true,
+    finalAssessmentCompleted: true,
+    moduleCompleted: true,
     lessons: {
       'lesson-1': { activities: {}, assessment: { passed: false, score: null }, completed: false, unlocked: true },
       'lesson-2': { activities: {}, assessment: { passed: false, score: null }, completed: false, unlocked: true },
@@ -170,6 +217,43 @@ test('sanitizeProgressState blocks tampered localStorage attempting to unlock sk
   assert.equal(canAccessScreen(sanitized, 'lesson-3'), false);
   assert.equal(canAccessScreen(sanitized, 'lesson-4'), false);
   assert.equal(canAccessScreen(sanitized, 'assessment'), false);
+  assert.equal(canAccessScreen(sanitized, 'completion'), false);
   assert.equal(sanitized.currentScreen, 'lesson-1');
 });
+
+test('sanitizeProgressState non-destructively upgrades v2 progress to v3', () => {
+  const v2Stored = {
+    version: 2,
+    currentScreen: 'lesson-2',
+    finalAssessmentUnlocked: false,
+    finalAssessmentCompleted: false,
+    assessmentAttempts: 0,
+    latestAssessment: null,
+    lessons: {
+      'lesson-1': {
+        activities: { 'net-force-calculator': true, 'lesson-1-kc': true },
+        assessment: { passed: true, score: 100, latestScore: 100, attempts: 1, lastResult: null },
+        completed: true,
+        unlocked: true,
+      },
+      'lesson-2': {
+        activities: {},
+        assessment: { passed: false, score: null, latestScore: null, attempts: 0, lastResult: null },
+        completed: false,
+        unlocked: true,
+      },
+      'lesson-3': { activities: {}, assessment: { passed: false, score: null }, completed: false, unlocked: false },
+      'lesson-4': { activities: {}, assessment: { passed: false, score: null }, completed: false, unlocked: false },
+      'lesson-5': { activities: {}, assessment: { passed: false, score: null }, completed: false, unlocked: false },
+    },
+  };
+
+  const migrated = sanitizeProgressState(v2Stored);
+  assert.equal(migrated.version, 3);
+  assert.equal(migrated.lessons['lesson-1'].completed, true);
+  assert.equal(migrated.lessons['lesson-2'].unlocked, true);
+  assert.equal(migrated.lastActiveLesson, 'lesson-2');
+  assert.equal(migrated.reflection.text, '');
+});
+
 

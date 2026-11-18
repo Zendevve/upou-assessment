@@ -4,11 +4,17 @@ import {
   FormulaPanel,
   KnowledgeCheck,
   LessonHeader,
-  ObjectiveBox,
+  LessonIntro,
+  LessonSummary,
   WorkedExample,
 } from '../common/Blocks';
 import { LessonAssessment } from '../common/LessonAssessment';
 import { SecondLawSimulator } from '../activities/SecondLawSimulator';
+import {
+  LESSON_INTROS,
+  LESSON_SUMMARIES,
+  OPTIONAL_CHECKPOINTS,
+} from '../../data/moduleContent';
 import { AssessmentResultSummary, ScreenId } from '../../physics/calculations';
 import { LessonProgressRecord } from '../../physics/progress';
 
@@ -19,6 +25,7 @@ interface LessonProps {
   onActivityCompleted: (activityId: string) => void;
   onAssessmentSubmitted: (result: AssessmentResultSummary) => void;
   onLockedNextAttempt: () => void;
+  onOpenReference: () => void;
 }
 
 export const Lesson3SecondLaw: React.FC<LessonProps> = ({
@@ -28,7 +35,10 @@ export const Lesson3SecondLaw: React.FC<LessonProps> = ({
   onActivityCompleted,
   onAssessmentSubmitted,
   onLockedNextAttempt,
+  onOpenReference,
 }) => {
+  const checkpoint = OPTIONAL_CHECKPOINTS['lesson-3-checkpoint'];
+
   return (
     <article>
       <LessonHeader
@@ -39,24 +49,29 @@ export const Lesson3SecondLaw: React.FC<LessonProps> = ({
         isCompleted={lessonRecord.completed}
       />
 
-      <ObjectiveBox objective="Apply Newton's Second Law using F_net = ma." />
+      <LessonIntro intro={LESSON_INTROS['lesson-3']} />
 
-      <section className="mt-8 space-y-4 text-sm sm:text-base text-[#334155]">
+      <section
+        id="l3-second-law"
+        data-section-id="l3-second-law"
+        data-section-label="1. Net Force, Mass, Acceleration"
+        className="mt-8 space-y-4 text-sm sm:text-base text-[#334155]"
+      >
         <h2 className="text-xl font-semibold text-[#172033]">
           1. Connecting Net Force, Mass, and Acceleration
         </h2>
         <p>
-          Newton’s First Law tells us that a nonzero net force changes an object’s velocity—meaning it produces <strong>acceleration</strong>. Newton’s Second Law tells us <em>exactly how much</em> acceleration occurs.
+          Newton’s First Law tells us that a nonzero net force changes an object’s velocity—meaning it produces <strong>acceleration</strong> (any change in speed <em>or</em> direction). Newton’s Second Law tells us <em>exactly how much</em> acceleration occurs.
         </p>
         <p>
-          Two patterns hold for every object:
+          Three core rules hold for every object:
         </p>
         <ul className="space-y-1.5 list-disc pl-5">
           <li>
             <strong>Effect of changing net force (mass constant):</strong> Applying a larger net force produces a proportionally larger acceleration. Doubling the net force doubles the acceleration.
           </li>
           <li>
-            <strong>Effect of changing mass (net force constant):</strong> A larger mass has greater inertia, so the same net force produces a smaller acceleration. Doubling the mass cuts the acceleration in half.
+            <strong>Effect of changing mass (net force constant):</strong> A larger mass has greater inertia, so the same net force produces <strong>less</strong> acceleration. Doubling the mass cuts the acceleration in half.
           </li>
           <li>
             <strong>Direction of acceleration:</strong> Acceleration always points in the <strong>same direction as the net force</strong>. If the net force points to the right, the object accelerates to the right.
@@ -75,7 +90,12 @@ export const Lesson3SecondLaw: React.FC<LessonProps> = ({
         />
       </section>
 
-      <section className="mt-8 space-y-4">
+      <section
+        id="l3-worked-examples"
+        data-section-id="l3-worked-examples"
+        data-section-label="2. Worked Examples"
+        className="mt-8 space-y-4"
+      >
         <h2 className="text-xl font-semibold text-[#172033]">
           2. Worked Examples (Step-by-Step)
         </h2>
@@ -104,9 +124,28 @@ export const Lesson3SecondLaw: React.FC<LessonProps> = ({
           ]}
           answer="a = 2 m/s² to the right"
         />
+
+        <KnowledgeCheck
+          id={checkpoint.id}
+          title={checkpoint.title}
+          type={checkpoint.type}
+          question={checkpoint.question}
+          helperText={checkpoint.helperText}
+          correctNumericValue={checkpoint.correctNumericValue}
+          numericTolerance={checkpoint.numericTolerance}
+          numericUnit={checkpoint.numericUnit}
+          correctFeedback={checkpoint.correctFeedback}
+          incorrectFeedback={checkpoint.incorrectFeedback}
+          isOptionalPractice
+        />
       </section>
 
-      <section className="mt-8">
+      <section
+        id="l3-simulator"
+        data-section-id="l3-simulator"
+        data-section-label="3. Second Law Simulator"
+        className="mt-8"
+      >
         <h2 className="text-xl font-semibold text-[#172033]">
           3. Interactive Experiment: Force, Mass, and Acceleration
         </h2>
@@ -151,12 +190,24 @@ export const Lesson3SecondLaw: React.FC<LessonProps> = ({
         onPassed={() => onActivityCompleted('lesson-3-kc')}
       />
 
-      <LessonAssessment
-        lessonId="lesson-3"
-        lessonRecord={lessonRecord}
-        onSubmitAssessment={onAssessmentSubmitted}
-        onNavigate={onNavigate}
+      <LessonSummary
+        lessonLabel="Lesson 3"
+        summary={LESSON_SUMMARIES['lesson-3']}
+        onOpenReference={onOpenReference}
       />
+
+      <section
+        id="l3-assessment"
+        data-section-id="l3-assessment"
+        data-section-label="Lesson 3 Mastery Assessment"
+      >
+        <LessonAssessment
+          lessonId="lesson-3"
+          lessonRecord={lessonRecord}
+          onSubmitAssessment={onAssessmentSubmitted}
+          onNavigate={onNavigate}
+        />
+      </section>
 
       <LessonFooterNav
         currentScreen="lesson-3"

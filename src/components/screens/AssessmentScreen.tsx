@@ -24,6 +24,7 @@ interface AssessmentScreenProps {
   completedLessonsCount: number;
   assessmentAttempts: number;
   latestAssessment: AssessmentResultSummary | null;
+  moduleCompleted: boolean;
   onSubmitAssessment: (result: AssessmentResultSummary) => void;
   onNavigate: (id: ScreenId) => void;
 }
@@ -34,6 +35,7 @@ export const AssessmentScreen: React.FC<AssessmentScreenProps> = ({
   completedLessonsCount,
   assessmentAttempts,
   latestAssessment,
+  moduleCompleted,
   onSubmitAssessment,
   onNavigate,
 }) => {
@@ -93,7 +95,7 @@ export const AssessmentScreen: React.FC<AssessmentScreenProps> = ({
         title="Final Module Assessment"
         duration="20 min"
         objectiveTag="Objectives 1–6"
-        isCompleted={Boolean(latestAssessment)}
+        isCompleted={moduleCompleted}
       />
 
       {/* Taking Questions One at a Time */}
@@ -403,13 +405,13 @@ export const AssessmentScreen: React.FC<AssessmentScreenProps> = ({
                   <p className="mt-2 text-sm sm:text-base text-[#334155]">
                     {latestAssessment.passedThreshold ? (
                       <>
-                        <strong>Formative Mastery Benchmark Met (≥ {FORMATIVE_MASTERY_THRESHOLD_PERCENT}%):</strong>{' '}
-                        You demonstrated solid understanding across force concepts and Newton’s three laws. Review any missed items below before moving forward.
+                        <strong>Mastery Benchmark Met (≥ {FORMATIVE_MASTERY_THRESHOLD_PERCENT}%):</strong>{' '}
+                        You demonstrated solid understanding across force concepts and Newton’s three laws and unlocked the Module Completion Summary.
                       </>
                     ) : (
                       <>
-                        <strong>Suggested Review Recommended (Below {FORMATIVE_MASTERY_THRESHOLD_PERCENT}% Benchmark):</strong>{' '}
-                        This {FORMATIVE_MASTERY_THRESHOLD_PERCENT}% target is a formative self-check guide, not a barrier. You have completed the assessment—review the explanations below and revisit any highlighted lessons to strengthen your understanding, or retry anytime.
+                        <strong>Below {FORMATIVE_MASTERY_THRESHOLD_PERCENT}% Benchmark:</strong>{' '}
+                        Score at least {FORMATIVE_MASTERY_THRESHOLD_PERCENT}% to unlock the Module Completion Summary. Review the explanations below, revisit any highlighted lessons, and retry whenever you are ready.
                       </>
                     )}
                   </p>
@@ -417,6 +419,16 @@ export const AssessmentScreen: React.FC<AssessmentScreenProps> = ({
               </div>
 
               <div className="no-print flex flex-wrap items-center gap-2.5">
+                {moduleCompleted && (
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('completion')}
+                    className="tactile-press inline-flex items-center gap-1.5 rounded-md bg-[#15803D] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#166534] min-h-[44px]"
+                  >
+                    <span>View Module Completion Summary</span>
+                    <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={handleRetry}

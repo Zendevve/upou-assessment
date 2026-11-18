@@ -1,6 +1,15 @@
 import React, { useState } from 'react';
-import { AlertTriangle, CheckCircle2, HelpCircle, RotateCcw, XCircle } from 'lucide-react';
-import { COURSE_INFO } from '../../data/moduleContent';
+import {
+  AlertTriangle,
+  BookmarkCheck,
+  CheckCircle2,
+  Compass,
+  HelpCircle,
+  RotateCcw,
+  Target,
+  XCircle,
+} from 'lucide-react';
+import { COURSE_INFO, LessonIntroSpec, LessonSummarySpec } from '../../data/moduleContent';
 
 interface LessonHeaderProps {
   breadcrumbLabel: string;
@@ -18,13 +27,13 @@ export const LessonHeader: React.FC<LessonHeaderProps> = ({
   isCompleted,
 }) => (
   <header className="border-b border-[#E2E8F0] pb-6">
-    <p className="text-xs font-medium tracking-[0.01em] text-[#64748B]">
+    <p className="text-xs font-medium tracking-[0.01em] text-[#475569]">
       {COURSE_INFO.moduleLabel} <span aria-hidden="true">/</span> {breadcrumbLabel}
     </p>
     <h1 className="mt-2 text-2xl sm:text-3xl font-bold text-[#172033]">
       {title}
     </h1>
-    <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm text-[#64748B]">
+    <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm text-[#475569]">
       <span>Estimated time: {duration}</span>
       <span aria-hidden="true">·</span>
       <span>{objectiveTag}</span>
@@ -39,6 +48,119 @@ export const LessonHeader: React.FC<LessonHeaderProps> = ({
       )}
     </div>
   </header>
+);
+
+export const LessonIntro: React.FC<{
+  intro: LessonIntroSpec;
+}> = ({ intro }) => (
+  <section
+    aria-label="Lesson introduction and learning objectives"
+    className="mt-6 rounded-md border border-[#BFDBFE] bg-[#EFF6FF] p-5 sm:p-6 space-y-4"
+  >
+    <div>
+      <p className="text-xs font-semibold tracking-[0.01em] text-[#1E40AF] flex items-center gap-1.5">
+        <Target className="h-3.5 w-3.5" aria-hidden="true" />
+        <span>Lesson Overview & Learning Objectives</span>
+      </p>
+      <p className="mt-1.5 text-sm sm:text-base text-[#172033] leading-relaxed">
+        {intro.description}
+      </p>
+    </div>
+
+    <div className="rounded border border-[#BFDBFE]/80 bg-white p-4">
+      <h2 className="text-sm font-semibold text-[#172033]">
+        Specific Objectives (What You Will Be Able to Do)
+      </h2>
+      <ul className="mt-2 space-y-1.5 text-sm text-[#334155] list-disc pl-5">
+        {intro.objectives.map((obj) => (
+          <li key={obj}>{obj}</li>
+        ))}
+      </ul>
+    </div>
+
+    <div className="grid gap-3 sm:grid-cols-2 text-sm">
+      <div className="rounded border border-[#E2E8F0] bg-white/85 px-4 py-3">
+        <p className="text-xs font-semibold text-[#1E40AF]">Everyday Connection</p>
+        <p className="mt-1 text-[#334155]">{intro.everydayExample}</p>
+      </div>
+      <div className="rounded border border-[#E2E8F0] bg-white/85 px-4 py-3">
+        <p className="text-xs font-semibold text-[#15803D]">What You Will Accomplish</p>
+        <p className="mt-1 text-[#334155]">{intro.accomplishment}</p>
+      </div>
+    </div>
+  </section>
+);
+
+export const LessonSummary: React.FC<{
+  lessonLabel: string;
+  summary: LessonSummarySpec;
+  onOpenReference?: () => void;
+}> = ({ lessonLabel, summary, onOpenReference }) => (
+  <section
+    aria-label={`${lessonLabel} key summary`}
+    className="my-8 rounded-md border border-[#CBD5E1] bg-[#F8FAFC] p-5 sm:p-6 space-y-4"
+  >
+    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#E2E8F0] pb-3">
+      <div className="flex items-center gap-2">
+        <BookmarkCheck className="h-5 w-5 text-[#2563EB]" aria-hidden="true" />
+        <h2 className="text-lg font-semibold text-[#172033]">
+          {lessonLabel} Summary & Quick Review
+        </h2>
+      </div>
+      {onOpenReference && (
+        <button
+          type="button"
+          onClick={onOpenReference}
+          className="tactile-press text-xs font-medium text-[#1D4ED8] hover:underline"
+        >
+          Open Glossary & Formulas →
+        </button>
+      )}
+    </div>
+
+    <div>
+      <h3 className="text-sm font-semibold text-[#172033]">Key Takeaways</h3>
+      <ul className="mt-2 space-y-1.5 text-sm text-[#334155] list-disc pl-5">
+        {summary.takeaways.map((point) => (
+          <li key={point}>{point}</li>
+        ))}
+      </ul>
+    </div>
+
+    <div className="grid gap-3 sm:grid-cols-2 text-sm">
+      <div className="rounded border border-[#E2E8F0] bg-white p-3.5">
+        <h3 className="text-xs font-semibold text-[#475569]">Core Definitions</h3>
+        <dl className="mt-2 space-y-1.5">
+          {summary.definitions.map((d) => (
+            <div key={d.term}>
+              <dt className="font-semibold text-[#172033] inline">{d.term}: </dt>
+              <dd className="text-[#334155] inline">{d.text}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+
+      <div className="rounded border border-[#E2E8F0] bg-white p-3.5 space-y-2.5">
+        <div>
+          <h3 className="text-xs font-semibold text-[#475569]">Key Relationship / Formula</h3>
+          <div className="mt-1.5 space-y-1">
+            {summary.formulas.map((f) => (
+              <p key={f} className="font-mono text-xs sm:text-sm font-semibold text-[#1E3A8A]">
+                {f}
+              </p>
+            ))}
+          </div>
+        </div>
+        <div className="border-t border-[#E2E8F0] pt-2">
+          <h3 className="text-xs font-semibold text-[#475569] flex items-center gap-1">
+            <Compass className="h-3.5 w-3.5 text-[#15803D]" aria-hidden="true" />
+            <span>Everyday Application</span>
+          </h3>
+          <p className="mt-1 text-xs sm:text-sm text-[#334155]">{summary.everydayApplication}</p>
+        </div>
+      </div>
+    </div>
+  </section>
 );
 
 export const ObjectiveBox: React.FC<{ objective: string; label?: string }> = ({
@@ -74,7 +196,7 @@ export const FormulaPanel: React.FC<{
         <div key={v.symbol} className="bg-white rounded border border-[#E2E8F0] px-3 py-2.5">
           <dt className="font-mono font-semibold text-[#2563EB]">{v.symbol}</dt>
           <dd className="mt-0.5 text-xs text-[#334155]">{v.meaning}</dd>
-          <dd className="mt-0.5 text-xs font-medium text-[#64748B]">Unit: {v.unit}</dd>
+          <dd className="mt-0.5 text-xs font-medium text-[#475569]">Unit: {v.unit}</dd>
         </div>
       ))}
     </dl>
@@ -154,51 +276,102 @@ export interface KnowledgeCheckOption {
 interface KnowledgeCheckProps {
   id: string;
   title?: string;
+  type?: 'choice' | 'numerical';
   question: string;
-  options: KnowledgeCheckOption[];
-  onPassed: () => void;
+  helperText?: string;
+  options?: KnowledgeCheckOption[];
+  correctNumericValue?: number;
+  numericTolerance?: number;
+  numericUnit?: string;
+  correctFeedback?: string;
+  incorrectFeedback?: string;
+  onPassed?: () => void;
   alreadyPassed?: boolean;
+  isOptionalPractice?: boolean;
 }
 
 export const KnowledgeCheck: React.FC<KnowledgeCheckProps> = ({
   id,
   title = 'Quick Knowledge Check',
+  type = 'choice',
   question,
-  options,
+  helperText,
+  options = [],
+  correctNumericValue,
+  numericTolerance = 0.05,
+  numericUnit,
+  correctFeedback = 'Correct!',
+  incorrectFeedback = 'Not quite right — review the explanation and try again.',
   onPassed,
   alreadyPassed = false,
+  isOptionalPractice = false,
 }) => {
   const [selectedId, setSelectedId] = useState<string>('');
+  const [numericInput, setNumericInput] = useState<string>('');
   const [submitted, setSubmitted] = useState(false);
 
   const selectedOption = options.find((o) => o.id === selectedId);
-  const isCorrect = Boolean(submitted && selectedOption?.isCorrect);
+  const parsedNumeric = Number(numericInput.trim());
+  const isNumericValid = numericInput.trim() !== '' && Number.isFinite(parsedNumeric);
+  const isNumericCorrect =
+    type === 'numerical' &&
+    isNumericValid &&
+    correctNumericValue !== undefined &&
+    Math.abs(parsedNumeric - correctNumericValue) <= numericTolerance;
+
+  const isCorrect =
+    submitted && (type === 'numerical' ? isNumericCorrect : Boolean(selectedOption?.isCorrect));
+
+  const feedbackText =
+    type === 'numerical'
+      ? isNumericCorrect
+        ? correctFeedback
+        : incorrectFeedback
+      : selectedOption?.feedback ?? '';
+
+  const canSubmit = type === 'numerical' ? numericInput.trim() !== '' : Boolean(selectedId);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedId) return;
+    if (!canSubmit) return;
     setSubmitted(true);
-    if (options.find((o) => o.id === selectedId)?.isCorrect) {
-      onPassed();
+    const passedNow =
+      type === 'numerical'
+        ? isNumericCorrect
+        : Boolean(options.find((o) => o.id === selectedId)?.isCorrect);
+    if (passedNow) {
+      onPassed?.();
     }
   };
 
   const handleRetry = () => {
     setSelectedId('');
+    setNumericInput('');
     setSubmitted(false);
   };
 
   return (
     <section
       aria-labelledby={`kc-heading-${id}`}
-      className="my-8 rounded-md border border-[#CBD5E1] bg-[#F8FAFC] p-5 sm:p-6"
+      className={`my-7 rounded-md border p-5 sm:p-6 ${
+        isOptionalPractice
+          ? 'border-[#CBD5E1] bg-white'
+          : 'border-[#CBD5E1] bg-[#F8FAFC]'
+      }`}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <HelpCircle className="h-5 w-5 text-[#2563EB]" aria-hidden="true" />
-          <h3 id={`kc-heading-${id}`} className="text-base font-semibold text-[#172033]">
-            {title}
-          </h3>
+          <div>
+            <h3 id={`kc-heading-${id}`} className="text-base font-semibold text-[#172033]">
+              {title}
+            </h3>
+            {isOptionalPractice && (
+              <p className="text-xs font-medium text-[#475569]">
+                Optional Practice Checkpoint · Does not lock progression
+              </p>
+            )}
+          </div>
         </div>
         {alreadyPassed && (
           <span className="surface-enter inline-flex items-center gap-1 text-xs font-medium text-[#15803D]">
@@ -209,63 +382,91 @@ export const KnowledgeCheck: React.FC<KnowledgeCheckProps> = ({
       </div>
 
       <p className="mt-3 text-sm sm:text-base font-medium text-[#172033]">{question}</p>
+      {helperText && <p className="mt-1 text-xs sm:text-sm text-[#475569]">{helperText}</p>}
 
       <form onSubmit={handleSubmit} className="mt-4 space-y-2.5">
-        <fieldset className="space-y-2">
-          <legend className="sr-only">{question}</legend>
-          {options.map((opt) => {
-            const isSelected = selectedId === opt.id;
-            return (
-              <label
-                key={opt.id}
-                className={`tactile-card flex items-start gap-3 rounded-md border p-3.5 cursor-pointer min-h-[44px] ${
-                  isSelected
-                    ? 'border-[#2563EB] bg-[#EFF6FF] shadow-[0_1px_2px_rgba(37,99,235,0.08)]'
-                    : 'border-[#E2E8F0] bg-white hover:bg-slate-50'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name={`kc-${id}`}
-                  value={opt.id}
-                  checked={isSelected}
-                  onChange={() => {
-                    setSelectedId(opt.id);
-                    if (submitted) setSubmitted(false);
-                  }}
-                  className="mt-1 h-4 w-4 accent-[#2563EB]"
-                />
-                <span className="text-sm text-[#172033]">{opt.label}</span>
-              </label>
-            );
-          })}
-        </fieldset>
+        {type === 'choice' ? (
+          <fieldset className="space-y-2">
+            <legend className="sr-only">{question}</legend>
+            {options.map((opt) => {
+              const isSelected = selectedId === opt.id;
+              return (
+                <label
+                  key={opt.id}
+                  className={`tactile-card flex items-start gap-3 rounded-md border p-3.5 cursor-pointer min-h-[44px] ${
+                    isSelected
+                      ? 'border-[#2563EB] bg-[#EFF6FF] shadow-[0_1px_2px_rgba(37,99,235,0.08)]'
+                      : 'border-[#E2E8F0] bg-[#F8FAFC] hover:bg-slate-100'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name={`kc-${id}`}
+                    value={opt.id}
+                    checked={isSelected}
+                    onChange={() => {
+                      setSelectedId(opt.id);
+                      if (submitted) setSubmitted(false);
+                    }}
+                    className="mt-1 h-4 w-4 accent-[#2563EB]"
+                  />
+                  <span className="text-sm text-[#172033]">{opt.label}</span>
+                </label>
+              );
+            })}
+          </fieldset>
+        ) : (
+          <div>
+            <label htmlFor={`kc-num-${id}`} className="block text-sm font-medium text-[#334155]">
+              Your Answer {numericUnit ? `(${numericUnit})` : ''}
+            </label>
+            <div className="mt-2 flex items-center gap-2.5">
+              <input
+                id={`kc-num-${id}`}
+                type="number"
+                step="any"
+                value={numericInput}
+                onChange={(e) => {
+                  setNumericInput(e.target.value);
+                  if (submitted) setSubmitted(false);
+                }}
+                placeholder="Enter a number"
+                className="w-40 rounded-md border border-[#CBD5E1] bg-white px-3.5 py-2 font-mono text-base text-[#172033] min-h-[44px]"
+              />
+              {numericUnit && (
+                <span className="font-mono text-sm font-semibold text-[#475569]">
+                  {numericUnit}
+                </span>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="pt-2 flex flex-wrap items-center gap-3">
           <button
             type="submit"
-            disabled={!selectedId}
+            disabled={!canSubmit}
             className="tactile-press rounded-md bg-[#2563EB] px-4 py-2 text-sm font-medium text-white hover:bg-[#1D4ED8] disabled:opacity-45 disabled:cursor-not-allowed min-h-[44px]"
           >
             Check Answer
           </button>
 
-          {submitted && !isCorrect && (
+          {submitted && (
             <button
               type="button"
               onClick={handleRetry}
               className="tactile-press inline-flex items-center gap-1.5 rounded-md border border-[#CBD5E1] bg-white px-4 py-2 text-sm font-medium text-[#172033] hover:bg-slate-50 min-h-[44px]"
             >
               <RotateCcw className="h-4 w-4" aria-hidden="true" />
-              Try Again
+              {isCorrect ? 'Practice Again' : 'Try Again'}
             </button>
           )}
         </div>
       </form>
 
-      {submitted && selectedOption && (
+      {submitted && (
         <div
-          key={`${selectedOption.id}-${isCorrect ? 'ok' : 'no'}`}
+          key={`${type === 'numerical' ? numericInput : selectedId}-${isCorrect ? 'ok' : 'no'}`}
           role="status"
           aria-live="polite"
           className={`surface-enter mt-4 rounded-md border p-4 text-sm flex items-start gap-3 ${
@@ -281,12 +482,13 @@ export const KnowledgeCheck: React.FC<KnowledgeCheckProps> = ({
           )}
           <div>
             <p className="font-semibold">
-              {isCorrect ? 'Correct' : 'Not quite right — review and try again'}
+              {isCorrect ? 'Correct' : 'Incorrect — review and try again'}
             </p>
-            <p className="mt-1">{selectedOption.feedback}</p>
+            <p className="mt-1">{feedbackText}</p>
           </div>
         </div>
       )}
     </section>
   );
 };
+

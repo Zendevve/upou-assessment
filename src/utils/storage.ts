@@ -6,11 +6,14 @@ import {
 import {
   createEmptyLessonRecord,
   createInitialModuleProgress,
+  isLessonId,
   LESSON_IDS,
   LessonId,
   LessonProgressRecord,
   ModuleProgressState,
   reconcileModuleProgress,
+  ReflectionRecord,
+  SectionBookmark,
 } from '../physics/progress';
 
 const STORAGE_KEY = 'physics_everyday_life_module_1_v2';
@@ -66,6 +69,35 @@ function sanitizeAssessmentRecord(raw: unknown): LessonProgressRecord['assessmen
   };
 }
 
+function sanitizeLastVisitedSections(raw: unknown): Partial<Record<ScreenId, SectionBookmark>> {
+  if (!raw || typeof raw !== 'object') return {};
+  const out: Partial<Record<ScreenId, SectionBookmark>> = {};
+  for (const [key, val] of Object.entries(raw as Record<string, unknown>)) {
+    if (!isValidScreenId(key) || !val || typeof val !== 'object') continue;
+    const item = val as Record<string, unknown>;
+    if (typeof item.sectionId === 'string' && typeof item.sectionLabel === 'string') {
+      out[key] = {
+        sectionId: item.sectionId,
+        sectionLabel: item.sectionLabel,
+        updatedAt: typeof item.updatedAt === 'string' ? item.updatedAt : '',
+      };
+    }
+  }
+  return out;
+}
+
+function sanitizeReflection(raw: unknown): ReflectionRecord {
+  if (!raw || typeof raw !== 'object') {
+    return { text: '', updatedAt: null, sampleViewed: false };
+  }
+  const obj = raw as Record<string, unknown>;
+  return {
+    text: typeof obj.text === 'string' ? obj.text : '',
+    updatedAt: typeof obj.updatedAt === 'string' ? obj.updatedAt : null,
+    sampleViewed: Boolean(obj.sampleViewed),
+  };
+}
+
 export function sanitizeProgressState(raw: unknown): ModuleProgressState {
   const fallback = createInitialProgressState();
   if (!raw || typeof raw !== 'object') {
@@ -116,14 +148,35 @@ export function sanitizeProgressState(raw: unknown): ModuleProgressState {
       ? (obj.latestAssessment as AssessmentResultSummary)
       : null;
 
+  const bestFinalAssessmentScore =
+    typeof obj.bestFinalAssessmentScore === 'number' &&
+    Number.isFinite(obj.bestFinalAssessmentScore) &&
+    obj.bestFinalAssessmentScore >= 0 &&
+    obj.bestFinalAssessmentScore <= 100
+      ? Math.round(obj.bestFinalAssessmentScore)
+      : latestAssessment?.percentage ?? null;
+
+  const lastActiveLesson =
+    typeof obj.lastActiveLesson === 'string' && isLessonId(obj.lastActiveLesson)
+      ? obj.lastActiveLesson
+      : isLessonId(currentScreen)
+      ? currentScreen
+      : null;
+
   return reconcileModuleProgress({
-    version: 2,
+    version: 3,
     currentScreen,
+    lastActiveLesson,
+    lastVisitedSections: sanitizeLastVisitedSections(obj.lastVisitedSections),
     lessons,
     finalAssessmentUnlocked: Boolean(obj.finalAssessmentUnlocked),
     finalAssessmentCompleted: Boolean(obj.finalAssessmentCompleted),
+    finalAssessmentPassed: Boolean(obj.finalAssessmentPassed),
+    bestFinalAssessmentScore,
     assessmentAttempts,
     latestAssessment,
+    moduleCompleted: Boolean(obj.moduleCompleted),
+    reflection: sanitizeReflection(obj.reflection),
   });
 }
 
